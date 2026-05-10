@@ -19,8 +19,18 @@ export default function Footer() {
               AI-powered cardiovascular disease risk prediction platform. Know your heart health before it's too late.
             </p>
             <div className="flex gap-3 mt-4">
-              {[Twitter, Github, Linkedin].map((Icon, i) => (
-                <a key={i} href="#" className="w-8 h-8 rounded-lg bg-white/10 flex items-center justify-center text-white/50 hover:text-white hover:bg-white/20 transition-all">
+              {[
+                { Icon: Twitter, href: '#' },
+                { Icon: Github, href: 'https://github.com/shakeelscribes/cardioguard-website.git' },
+                { Icon: Linkedin, href: '#' }
+              ].map(({ Icon, href }, i) => (
+                <a 
+                  key={i} 
+                  href={href}
+                  target={href !== '#' ? "_blank" : undefined}
+                  rel={href !== '#' ? "noopener noreferrer" : undefined}
+                  className="w-8 h-8 rounded-lg bg-white/10 flex items-center justify-center text-white/50 hover:text-white hover:bg-white/20 transition-all"
+                >
                   <Icon className="w-4 h-4" />
                 </a>
               ))}

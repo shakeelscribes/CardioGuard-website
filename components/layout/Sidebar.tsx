@@ -51,12 +51,20 @@ export default function Sidebar() {
 
       {/* User mini profile */}
       <div className={cn('px-4 pb-6 border-b border-outline-variant/15 dark:border-dark-border', collapsed && 'px-2')}>
-        <div className={cn('flex items-center gap-3', collapsed && 'justify-center')}>
-          <div className="w-10 h-10 rounded-xl bg-primary-gradient flex-shrink-0 flex items-center justify-center">
-            <span className="text-white font-bold text-sm">
-              {profile?.name?.[0]?.toUpperCase() || 'U'}
-            </span>
-          </div>
+        <Link href="/profile" className={cn('flex items-center gap-3 hover:opacity-80 transition-opacity', collapsed && 'justify-center')}>
+          {profile?.avatar_url ? (
+            <img 
+              src={profile.avatar_url} 
+              alt="Profile" 
+              className="w-10 h-10 rounded-xl object-cover flex-shrink-0"
+            />
+          ) : (
+            <div className="w-10 h-10 rounded-xl bg-primary-gradient flex-shrink-0 flex items-center justify-center">
+              <span className="text-white font-bold text-sm">
+                {profile?.name?.[0]?.toUpperCase() || 'U'}
+              </span>
+            </div>
+          )}
           <AnimatePresence>
             {!collapsed && (
               <motion.div
@@ -75,7 +83,7 @@ export default function Sidebar() {
               </motion.div>
             )}
           </AnimatePresence>
-        </div>
+        </Link>
       </div>
 
       {/* Navigation links */}

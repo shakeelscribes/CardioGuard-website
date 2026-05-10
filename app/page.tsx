@@ -4,7 +4,9 @@ import LandingHero from '@/components/landing/LandingHero';
 import FeaturesSection from '@/components/landing/FeaturesSection';
 import HowItWorks from '@/components/landing/HowItWorks';
 import StatsSection from '@/components/landing/StatsSection';
-import Testimonials from '@/components/landing/Testimonials';
+import TechStack from '@/components/landing/TechStack';
+import FAQ from '@/components/landing/FAQ';
+
 import CTASection from '@/components/landing/CTASection';
 import Footer from '@/components/layout/Footer';
 
@@ -15,8 +17,9 @@ export default function LandingPage() {
       <LandingHero />
       <StatsSection />
       <FeaturesSection />
+      <TechStack />
       <HowItWorks />
-      <Testimonials />
+      <FAQ />
       <CTASection />
       <Footer />
     </div>

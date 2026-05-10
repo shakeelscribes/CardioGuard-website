@@ -11,7 +11,7 @@ import toast from 'react-hot-toast';
 function AuthForm() {
   const router = useRouter();
   const searchParams = useSearchParams();
-  const [mode, setMode] = useState<'login' | 'signup' | 'otp'>('login');
+  const [mode, setMode] = useState<'login' | 'signup' | 'otp' | 'forgot-password'>('login');
   const [showPassword, setShowPassword] = useState(false);
   const [loading, setLoading] = useState(false);
   const [otpEmail, setOtpEmail] = useState('');
@@ -102,6 +102,27 @@ function AuthForm() {
       toast.success('Verification email resent!');
     } catch {
       toast.error('Failed to resend. Please try again.');
+    }
+  }
+
+  async function handleForgotPassword(e: React.FormEvent) {
+    e.preventDefault();
+    if (!form.email) {
+      toast.error('Please enter your email');
+      return;
+    }
+    setLoading(true);
+    try {
+      const { error } = await supabase.auth.resetPasswordForEmail(form.email, {
+        redirectTo: `${window.location.origin}/update-password`,
+      });
+      if (error) throw error;
+      toast.success('Password reset email sent! Check your inbox.');
+      setMode('login'); // Go back to login screen
+    } catch (err: any) {
+      toast.error(err.message || 'Failed to send reset email');
+    } finally {
+      setLoading(false);
     }
   }
 
@@ -221,19 +242,23 @@ function AuthForm() {
                 exit={{ opacity: 0, y: -20 }}
               >
                 <h1 className="font-jakarta text-3xl font-bold text-on-surface dark:text-white mb-2">
-                  {mode === 'login' ? 'Welcome back' : 'Create account'}
+                  {mode === 'login' ? 'Welcome back' : mode === 'forgot-password' ? 'Reset password' : 'Create account'}
                 </h1>
                 <p className="text-on-surface-variant text-sm mb-8">
                   {mode === 'login'
                     ? 'Sign in to access your health dashboard'
+                    : mode === 'forgot-password'
+                    ? 'Enter your email address and we will send you a link to reset your password'
                     : 'Start your cardiovascular health journey today'}
                 </p>
 
                 {/* Tab switcher */}
+                {mode !== 'forgot-password' && (
                 <div className="flex bg-surface-container dark:bg-dark-surface rounded-xl p-1 mb-6">
                   {(['login', 'signup'] as const).map((tab) => (
                     <button
                       key={tab}
+                      type="button"
                       onClick={() => setMode(tab)}
                       className={`flex-1 py-2 rounded-lg text-sm font-medium transition-all ${
                         mode === tab
@@ -245,8 +270,9 @@ function AuthForm() {
                     </button>
                   ))}
                 </div>
+                )}
 
-                <form onSubmit={mode === 'login' ? handleLogin : handleSignup} className="space-y-4">
+                <form onSubmit={mode === 'login' ? handleLogin : mode === 'forgot-password' ? handleForgotPassword : handleSignup} className="space-y-4">
                   {mode === 'signup' && (
                     <div>
                       <label className="block text-xs font-medium text-on-surface-variant mb-2">Full Name</label>
@@ -279,6 +305,7 @@ function AuthForm() {
                     </div>
                   </div>
 
+                  {mode !== 'forgot-password' && (
                   <div>
                     <label className="block text-xs font-medium text-on-surface-variant mb-2">Password</label>
                     <div className="relative">
@@ -301,10 +328,11 @@ function AuthForm() {
                     </div>
                     {mode === 'login' && (
                       <div className="text-right mt-1">
-                        <a href="#" className="text-xs text-primary hover:underline">Forgot password?</a>
+                        <button type="button" onClick={() => setMode('forgot-password')} className="text-xs text-primary hover:underline">Forgot password?</button>
                       </div>
                     )}
                   </div>
+                  )}
 
                   <button
                     type="submit"
@@ -315,6 +343,8 @@ function AuthForm() {
                       <Loader2 className="w-5 h-5 animate-spin" />
                     ) : mode === 'login' ? (
                       'Sign In'
+                    ) : mode === 'forgot-password' ? (
+                      'Send Reset Link'
                     ) : (
                       'Create Account'
                     )}
@@ -322,13 +352,26 @@ function AuthForm() {
                 </form>
 
                 <p className="text-center text-on-surface-variant text-sm mt-6">
-                  {mode === 'login' ? "Don't have an account? " : 'Already have an account? '}
-                  <button
-                    onClick={() => setMode(mode === 'login' ? 'signup' : 'login')}
-                    className="text-primary font-medium hover:underline"
-                  >
-                    {mode === 'login' ? 'Sign up free' : 'Sign in'}
-                  </button>
+                  {mode === 'forgot-password' ? (
+                    <button
+                      type="button"
+                      onClick={() => setMode('login')}
+                      className="text-primary font-medium hover:underline"
+                    >
+                      Back to Sign In
+                    </button>
+                  ) : (
+                    <>
+                      {mode === 'login' ? "Don't have an account? " : 'Already have an account? '}
+                      <button
+                        type="button"
+                        onClick={() => setMode(mode === 'login' ? 'signup' : 'login')}
+                        className="text-primary font-medium hover:underline"
+                      >
+                        {mode === 'login' ? 'Sign up free' : 'Sign in'}
+                      </button>
+                    </>
+                  )}
                 </p>
               </motion.div>
             )}
