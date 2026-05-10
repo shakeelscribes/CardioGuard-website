@@ -28,12 +28,30 @@ export default function TechStack() {
           {techItems.map((tech, index) => (
             <motion.div
               key={tech.name}
-              initial={{ opacity: 0, y: 20 }}
-              whileInView={{ opacity: 1, y: 0 }}
+              initial={{ opacity: 0, scale: 0.5, y: 40 }}
+              whileInView={{ opacity: 1, scale: 1, y: 0 }}
+              animate={{ 
+                y: [0, -10, 0],
+              }}
               viewport={{ once: true, margin: '-50px' }}
-              transition={{ duration: 0.5, delay: index * 0.1 }}
-              whileHover={{ scale: 1.05 }}
-              className={`px-6 py-3 rounded-full border flex items-center justify-center font-semibold text-sm transition-all ${tech.color}`}
+              transition={{ 
+                opacity: { duration: 0.5, delay: index * 0.1 },
+                scale: { duration: 0.5, delay: index * 0.1, type: "spring", bounce: 0.4 },
+                y: {
+                  duration: 3 + (index % 3) * 0.5,
+                  repeat: Infinity,
+                  repeatType: "reverse",
+                  ease: "easeInOut",
+                  delay: index * 0.2
+                }
+              }}
+              whileHover={{ 
+                scale: 1.15, 
+                rotate: index % 2 === 0 ? 3 : -3,
+                boxShadow: "0px 10px 30px rgba(0,0,0,0.1)",
+                transition: { duration: 0.2, type: 'spring', stiffness: 400 }
+              }}
+              className={`px-8 py-4 rounded-full border-2 flex items-center justify-center font-bold text-base md:text-lg cursor-pointer ${tech.color}`}
             >
               {tech.name}
             </motion.div>

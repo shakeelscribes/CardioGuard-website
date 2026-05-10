@@ -15,6 +15,16 @@ function AuthForm() {
   const [showPassword, setShowPassword] = useState(false);
   const [loading, setLoading] = useState(false);
   const [otpEmail, setOtpEmail] = useState('');
+  const [resetEmailSent, setResetEmailSent] = useState(false);
+  const [resendCountdown, setResendCountdown] = useState(0);
+
+  useEffect(() => {
+    let timer: NodeJS.Timeout;
+    if (resendCountdown > 0) {
+      timer = setTimeout(() => setResendCountdown(resendCountdown - 1), 1000);
+    }
+    return () => clearTimeout(timer);
+  }, [resendCountdown]);
 
   const [form, setForm] = useState({
     email: '',
@@ -105,8 +115,8 @@ function AuthForm() {
     }
   }
 
-  async function handleForgotPassword(e: React.FormEvent) {
-    e.preventDefault();
+  async function handleForgotPassword(e?: React.FormEvent) {
+    if (e) e.preventDefault();
     if (!form.email) {
       toast.error('Please enter your email');
       return;
@@ -116,11 +126,14 @@ function AuthForm() {
       const { error } = await supabase.auth.resetPasswordForEmail(form.email, {
         redirectTo: `${window.location.origin}/update-password`,
       });
-      if (error) throw error;
-      toast.success('Password reset email sent! Check your inbox.');
-      setMode('login'); // Go back to login screen
+      if (error) {
+        // Log the error but don't show it to the user to prevent enumeration
+        console.error('Reset password error:', error);
+      }
+      setResetEmailSent(true);
+      setResendCountdown(60);
     } catch (err: any) {
-      toast.error(err.message || 'Failed to send reset email');
+      console.error('Failed to send reset email:', err);
     } finally {
       setLoading(false);
     }
@@ -242,11 +255,13 @@ function AuthForm() {
                 exit={{ opacity: 0, y: -20 }}
               >
                 <h1 className="font-jakarta text-3xl font-bold text-on-surface dark:text-white mb-2">
-                  {mode === 'login' ? 'Welcome back' : mode === 'forgot-password' ? 'Reset password' : 'Create account'}
+                  {mode === 'login' ? 'Welcome back' : mode === 'forgot-password' && resetEmailSent ? 'Check your email' : mode === 'forgot-password' ? 'Reset password' : 'Create account'}
                 </h1>
                 <p className="text-on-surface-variant text-sm mb-8">
                   {mode === 'login'
                     ? 'Sign in to access your health dashboard'
+                    : mode === 'forgot-password' && resetEmailSent
+                    ? `If an account is associated with ${form.email}, you will receive a password reset link shortly.`
                     : mode === 'forgot-password'
                     ? 'Enter your email address and we will send you a link to reset your password'
                     : 'Start your cardiovascular health journey today'}
@@ -290,6 +305,7 @@ function AuthForm() {
                     </div>
                   )}
 
+                  {(!resetEmailSent || mode !== 'forgot-password') && (
                   <div>
                     <label className="block text-xs font-medium text-on-surface-variant mb-2">Email Address</label>
                     <div className="relative">
@@ -304,6 +320,7 @@ function AuthForm() {
                       />
                     </div>
                   </div>
+                  )}
 
                   {mode !== 'forgot-password' && (
                   <div>
@@ -334,28 +351,48 @@ function AuthForm() {
                   </div>
                   )}
 
-                  <button
-                    type="submit"
-                    disabled={loading}
-                    className="btn-primary w-full flex items-center justify-center gap-2 py-3 mt-2"
-                  >
-                    {loading ? (
-                      <Loader2 className="w-5 h-5 animate-spin" />
-                    ) : mode === 'login' ? (
-                      'Sign In'
-                    ) : mode === 'forgot-password' ? (
-                      'Send Reset Link'
-                    ) : (
-                      'Create Account'
-                    )}
-                  </button>
+                  {mode === 'forgot-password' && resetEmailSent ? (
+                    <button
+                      type="button"
+                      onClick={() => handleForgotPassword()}
+                      disabled={loading || resendCountdown > 0}
+                      className="btn-primary w-full flex items-center justify-center gap-2 py-3 mt-2"
+                    >
+                      {loading ? (
+                        <Loader2 className="w-5 h-5 animate-spin" />
+                      ) : resendCountdown > 0 ? (
+                        `Resend Email (${resendCountdown}s)`
+                      ) : (
+                        'Resend Email'
+                      )}
+                    </button>
+                  ) : (
+                    <button
+                      type="submit"
+                      disabled={loading}
+                      className="btn-primary w-full flex items-center justify-center gap-2 py-3 mt-2"
+                    >
+                      {loading ? (
+                        <Loader2 className="w-5 h-5 animate-spin" />
+                      ) : mode === 'login' ? (
+                        'Sign In'
+                      ) : mode === 'forgot-password' ? (
+                        'Send Reset Link'
+                      ) : (
+                        'Create Account'
+                      )}
+                    </button>
+                  )}
                 </form>
 
                 <p className="text-center text-on-surface-variant text-sm mt-6">
                   {mode === 'forgot-password' ? (
                     <button
                       type="button"
-                      onClick={() => setMode('login')}
+                      onClick={() => {
+                        setMode('login');
+                        setResetEmailSent(false);
+                      }}
                       className="text-primary font-medium hover:underline"
                     >
                       Back to Sign In

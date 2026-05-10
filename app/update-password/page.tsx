@@ -3,7 +3,7 @@ import { useState, Suspense } from 'react';
 import { useRouter } from 'next/navigation';
 import { motion, AnimatePresence } from 'framer-motion';
 import { supabase } from '@/lib/supabase';
-import { Heart, Eye, EyeOff, Loader2, Lock, ArrowLeft } from 'lucide-react';
+import { Heart, Eye, EyeOff, Loader2, Lock, ArrowLeft, CheckCircle2, Circle } from 'lucide-react';
 import Link from 'next/link';
 import toast from 'react-hot-toast';
 
@@ -20,10 +20,20 @@ function UpdatePasswordForm() {
     setForm(prev => ({ ...prev, [field]: value }));
   }
 
+  const requirements = [
+    { regex: /.{8,}/, text: 'At least 8 characters' },
+    { regex: /[A-Z]/, text: 'At least one uppercase letter' },
+    { regex: /[a-z]/, text: 'At least one lowercase letter' },
+    { regex: /[0-9]/, text: 'At least one number' },
+  ];
+
   async function handleUpdatePassword(e: React.FormEvent) {
     e.preventDefault();
-    if (form.password.length < 6) {
-      toast.error('Password must be at least 6 characters');
+    
+    // Validate requirements
+    const allReqsMet = requirements.every(req => req.regex.test(form.password));
+    if (!allReqsMet) {
+      toast.error('Please meet all password requirements');
       return;
     }
     if (form.password !== form.confirmPassword) {
@@ -38,7 +48,7 @@ function UpdatePasswordForm() {
       });
       if (error) throw error;
       toast.success('Password updated successfully! 🎉');
-      router.push('/auth');
+      router.push('/dashboard');
     } catch (err: any) {
       toast.error(err.message || 'Failed to update password');
     } finally {
@@ -123,6 +133,25 @@ function UpdatePasswordForm() {
                     >
                       {showPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
                     </button>
+                  </div>
+
+                  {/* Password Requirements Checklist */}
+                  <div className="mt-3 space-y-2">
+                    {requirements.map((req, i) => {
+                      const isMet = req.regex.test(form.password);
+                      return (
+                        <div key={i} className="flex items-center gap-2 text-sm transition-colors duration-300">
+                          {isMet ? (
+                            <CheckCircle2 className="w-4 h-4 text-emerald-500" />
+                          ) : (
+                            <Circle className="w-4 h-4 text-on-surface-variant/50" />
+                          )}
+                          <span className={isMet ? 'text-emerald-500 font-medium' : 'text-on-surface-variant'}>
+                            {req.text}
+                          </span>
+                        </div>
+                      );
+                    })}
                   </div>
                 </div>
 
