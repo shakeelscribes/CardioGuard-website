@@ -143,11 +143,22 @@ export default function PredictPage() {
 
       const mlResult = await predictCVD(mlPayload);
 
+      const heightMeters = mlPayload.height / 100;
+      const bmiValue = parseFloat((mlPayload.weight / (heightMeters * heightMeters)).toFixed(1));
+      let bmiCat = "Normal";
+      if (bmiValue < 18.5) bmiCat = "Underweight";
+      else if (bmiValue >= 25 && bmiValue < 30) bmiCat = "Overweight";
+      else if (bmiValue >= 30) bmiCat = "Obese";
+
       const payload = {
         user_id: user.id,
         ...mlPayload,
         probability: mlResult.probability,
         risk_level: mlResult.risk_level,
+        prediction: mlResult.prediction === 1,
+        advice: mlResult.message || "Consult with your healthcare provider.",
+        bmi: bmiValue,
+        bmi_category: bmiCat,
         date: new Date().toISOString()
       };
 
