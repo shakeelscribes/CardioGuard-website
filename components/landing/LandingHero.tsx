@@ -1,152 +1,151 @@
 'use client';
-// components/landing/LandingHero.tsx
 import Link from 'next/link';
 import { motion } from 'framer-motion';
-import { ArrowRight, Heart, Shield, Zap, Activity } from 'lucide-react';
-import ParticleCanvas from './ParticleCanvas';
+import { ArrowRight, Shield, Zap, Activity } from 'lucide-react';
 
 export default function LandingHero() {
   return (
-    <section className="relative min-h-screen flex items-center overflow-hidden">
-      {/* Animated gradient background */}
-      <div className="absolute inset-0 animated-gradient-bg" />
+    <section className="relative min-h-screen flex flex-col lg:flex-row bg-background overflow-hidden border-b border-outline-variant">
+      
+      {/* Structural micro-grid lines (Left Side) */}
+      <div className="absolute inset-y-0 left-0 w-full lg:w-1/2 pointer-events-none" 
+           style={{ backgroundImage: 'linear-gradient(to right, rgba(15,23,42,0.03) 1px, transparent 1px), linear-gradient(to bottom, rgba(15,23,42,0.03) 1px, transparent 1px)', backgroundSize: '40px 40px' }} 
+      />
 
-      {/* Particle system */}
-      <div className="absolute inset-0">
-        <ParticleCanvas />
-      </div>
-
-      {/* Geometric accent shapes */}
-      <div className="absolute inset-0 overflow-hidden pointer-events-none">
-        <motion.div
-          animate={{ rotate: 360 }}
-          transition={{ duration: 80, repeat: Infinity, ease: 'linear' }}
-          className="absolute -top-40 -right-40 w-96 h-96 rounded-full border border-white/10"
-        />
-        <motion.div
-          animate={{ rotate: -360 }}
-          transition={{ duration: 60, repeat: Infinity, ease: 'linear' }}
-          className="absolute -bottom-40 -left-20 w-80 h-80 rounded-full border border-white/8"
-        />
-        <div className="absolute top-1/4 right-1/4 w-64 h-64 rounded-full bg-cyan-400/10 blur-3xl" />
-        <div className="absolute bottom-1/4 left-1/4 w-96 h-96 rounded-full bg-blue-600/10 blur-3xl" />
-      </div>
-
-      {/* Content */}
-      <div className="relative z-10 section-wrapper py-32 pt-40">
-        <div className="max-w-4xl">
-          {/* Badge */}
+      {/* Left Content Area (Thesis) */}
+      <div className="relative w-full lg:w-1/2 flex items-center px-8 lg:px-16 xl:px-24 pt-32 pb-20 z-10 border-r border-outline-variant bg-background">
+        <div className="max-w-xl">
+          {/* Clinical Badge */}
           <motion.div
-            initial={{ opacity: 0, y: 20 }}
+            initial={{ opacity: 0, y: 10 }}
             animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.5 }}
-            className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-white/15 backdrop-blur-md border border-white/20 mb-8"
+            transition={{ duration: 0.4 }}
+            className="inline-flex items-center gap-3 px-3 py-1 border border-outline-variant bg-surface mb-8 rounded-sm shadow-sm"
           >
-            <div className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse" />
-            <span className="text-white/90 text-sm font-medium">AI-Powered Cardiovascular Analysis</span>
+            <div className="w-2 h-2 bg-primary rounded-full animate-pulse" />
+            <span className="text-on-surface-variant text-xs font-mono tracking-widest uppercase">System Active / ML-09</span>
           </motion.div>
 
-          {/* Main Headline */}
+          {/* Headline (Instrument Serif) */}
           <motion.h1
-            initial={{ opacity: 0, y: 30 }}
+            initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.7, delay: 0.1 }}
-            className="font-jakarta text-5xl md:text-7xl font-bold text-white leading-tight mb-6"
+            transition={{ duration: 0.6, delay: 0.1 }}
+            className="font-serif text-6xl md:text-8xl text-on-surface leading-[0.9] mb-8"
           >
-            Know Your Heart.
-            <br />
-            <span className="text-cyan-300">Before It's Too Late.</span>
+            Predictive<br />
+            <span className="italic text-primary">Cardiology.</span>
           </motion.h1>
 
-          {/* Subheadline */}
+          {/* Subheadline (Inter) */}
           <motion.p
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.6, delay: 0.25 }}
-            className="text-white/75 text-xl md:text-2xl leading-relaxed max-w-2xl mb-10"
+            transition={{ duration: 0.6, delay: 0.2 }}
+            className="text-on-surface-variant text-lg md:text-xl leading-relaxed mb-10 max-w-md font-sans"
           >
-            CardioGuard uses clinical-grade AI to predict your cardiovascular disease risk.
-            Get personalized insights in minutes, not months.
+            CardioGuard processes your physiological data through a clinical-grade neural network to identify cardiovascular risks before they escalate.
           </motion.p>
 
-          {/* CTA Buttons */}
+          {/* Actions */}
           <motion.div
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.6, delay: 0.4 }}
+            transition={{ duration: 0.6, delay: 0.3 }}
             className="flex flex-col sm:flex-row gap-4 mb-16"
           >
             <Link
               href="/auth?mode=signup"
-              className="group inline-flex items-center justify-center gap-2 px-8 py-4 rounded-2xl bg-white text-primary font-bold text-lg hover:bg-white/95 transition-all shadow-ambient-lg hover:shadow-glow-lg hover:-translate-y-0.5"
+              className="group inline-flex items-center justify-center gap-2 px-6 py-4 bg-primary text-white text-sm font-medium tracking-wide uppercase transition-all hover:bg-primary-container shadow-[0_4px_14px_0_rgba(67,56,202,0.39)] hover:shadow-[0_6px_20px_rgba(67,56,202,0.23)] hover:-translate-y-0.5"
             >
-              Start Free Assessment
-              <ArrowRight className="w-5 h-5 group-hover:translate-x-1 transition-transform" />
+              Analyze Vitals
+              <ArrowRight className="w-4 h-4 group-hover:translate-x-1 transition-transform" />
             </Link>
             <Link
               href="/auth"
-              className="inline-flex items-center justify-center gap-2 px-8 py-4 rounded-2xl border border-white/30 text-white font-semibold text-lg hover:bg-white/10 transition-all backdrop-blur-sm"
+              className="inline-flex items-center justify-center px-6 py-4 border border-outline-variant text-on-surface text-sm font-medium tracking-wide uppercase hover:bg-surface-container transition-colors"
             >
-              Sign In
+              Access Records
             </Link>
           </motion.div>
 
-          {/* Trust badges */}
+          {/* Trust Indicators */}
           <motion.div
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
-            transition={{ duration: 0.6, delay: 0.6 }}
-            className="flex flex-wrap gap-6"
+            transition={{ duration: 0.6, delay: 0.5 }}
+            className="flex gap-8 border-t border-outline-variant pt-8"
           >
-            {[
-              { icon: Shield, text: 'HIPAA Compliant' },
-              { icon: Zap, text: 'Results in < 10 Seconds' },
-              { icon: Activity, text: 'Clinical-Grade AI' },
-              { icon: Heart, text: '95%+ Accuracy' },
-            ].map(({ icon: Icon, text }) => (
-              <div key={text} className="flex items-center gap-2 text-white/70">
-                <Icon className="w-4 h-4 text-cyan-300" />
-                <span className="text-sm font-medium">{text}</span>
-              </div>
-            ))}
+            <div className="flex flex-col gap-1">
+              <Shield className="w-5 h-5 text-on-surface-variant mb-1" />
+              <span className="text-on-surface font-mono text-sm font-semibold">HIPAA</span>
+              <span className="text-on-surface-variant text-xs">Compliant Storage</span>
+            </div>
+            <div className="flex flex-col gap-1">
+              <Activity className="w-5 h-5 text-on-surface-variant mb-1" />
+              <span className="text-on-surface font-mono text-sm font-semibold">95.2%</span>
+              <span className="text-on-surface-variant text-xs">Model Accuracy</span>
+            </div>
           </motion.div>
         </div>
+      </div>
 
-        {/* Floating stats cards */}
-        <motion.div
-          initial={{ opacity: 0, x: 50, scale: 0.9 }}
-          animate={{ opacity: 1, x: 0, scale: 1 }}
-          transition={{ duration: 0.8, delay: 0.5 }}
-          className="hidden lg:block absolute right-8 top-1/2 -translate-y-1/2 space-y-4"
+      {/* Right Side (Visual/Data Area) */}
+      <div className="relative w-full lg:w-1/2 bg-surface hidden lg:flex items-center justify-center overflow-hidden">
+        {/* Crisp grid lines on the right side */}
+        <div className="absolute inset-0 pointer-events-none" 
+             style={{ backgroundImage: 'linear-gradient(to right, rgba(67,56,202,0.05) 1px, transparent 1px), linear-gradient(to bottom, rgba(67,56,202,0.05) 1px, transparent 1px)', backgroundSize: '20px 20px' }} 
+        />
+        
+        {/* A minimalist animated medical scan / data viz UI */}
+        <motion.div 
+          initial={{ opacity: 0, scale: 0.95 }}
+          animate={{ opacity: 1, scale: 1 }}
+          transition={{ duration: 0.8, delay: 0.3 }}
+          className="relative z-10 w-full max-w-lg p-8 bg-white border border-outline-variant shadow-2xl"
         >
-          {[
-            { label: 'Predictions Made', value: '50K+', change: '+12%', positive: true },
-            { label: 'Avg Risk Reduction', value: '34%', change: 'vs baseline', positive: true },
-            { label: 'Clinical Accuracy', value: '95.2%', change: 'validated', positive: true },
-          ].map((card, i) => (
-            <motion.div
-              key={card.label}
-              animate={{ y: [0, -8, 0] }}
-              transition={{ duration: 4 + i, repeat: Infinity, ease: 'easeInOut', delay: i * 0.8 }}
-              className="bg-white/15 backdrop-blur-lg border border-white/20 rounded-2xl p-4 w-52 shadow-ambient"
-            >
-              <p className="text-white/60 text-xs font-medium mb-1">{card.label}</p>
-              <p className="text-white text-2xl font-bold font-jakarta">{card.value}</p>
-              <span className={`text-xs font-medium ${card.positive ? 'text-emerald-300' : 'text-red-300'}`}>
-                {card.change}
-              </span>
-            </motion.div>
-          ))}
+          <div className="flex justify-between items-center mb-8 border-b border-outline-variant pb-4">
+            <span className="font-mono text-xs text-on-surface-variant">Live Analysis Engine</span>
+            <span className="font-mono text-xs text-primary font-bold">Awaiting Data...</span>
+          </div>
+
+          {/* Synthetic EKG representation */}
+          <div className="h-32 w-full relative mb-8">
+            {/* Base line */}
+            <div className="absolute inset-x-0 top-1/2 h-[1px] bg-outline-variant" />
+            
+            {/* Animated EKG line */}
+            <motion.svg viewBox="0 0 400 100" className="w-full h-full absolute inset-0 overflow-visible" preserveAspectRatio="none">
+              <motion.path
+                d="M 0,50 L 50,50 L 60,30 L 70,70 L 80,10 L 90,90 L 100,50 L 250,50 L 260,30 L 270,70 L 280,10 L 290,90 L 300,50 L 400,50"
+                fill="none"
+                stroke="var(--primary)"
+                strokeWidth="2"
+                strokeLinecap="square"
+                initial={{ pathLength: 0, opacity: 0.5 }}
+                animate={{ pathLength: 1, opacity: 1 }}
+                transition={{ duration: 2, repeat: Infinity, ease: "linear" }}
+              />
+            </motion.svg>
+          </div>
+
+          <div className="grid grid-cols-3 gap-4 border-t border-outline-variant pt-4">
+            <div>
+              <div className="text-[10px] uppercase tracking-wider text-on-surface-variant font-medium">BPM</div>
+              <div className="font-mono text-lg text-on-surface">--</div>
+            </div>
+            <div>
+              <div className="text-[10px] uppercase tracking-wider text-on-surface-variant font-medium">SYS/DIA</div>
+              <div className="font-mono text-lg text-on-surface">---/--</div>
+            </div>
+            <div>
+              <div className="text-[10px] uppercase tracking-wider text-on-surface-variant font-medium">Chol</div>
+              <div className="font-mono text-lg text-on-surface">---</div>
+            </div>
+          </div>
         </motion.div>
       </div>
 
-      {/* Bottom wave */}
-      <div className="absolute bottom-0 left-0 right-0">
-        <svg viewBox="0 0 1440 80" fill="none" xmlns="http://www.w3.org/2000/svg" className="w-full">
-          <path d="M0 80L48 69.3C96 58.7 192 37.3 288 32C384 26.7 480 37.3 576 48C672 58.7 768 69.3 864 64C960 58.7 1056 37.3 1152 32C1248 26.7 1344 37.3 1392 42.7L1440 48V80H0Z"
-            className="fill-background dark:fill-dark-background" />
-        </svg>
-      </div>
     </section>
   );
 }

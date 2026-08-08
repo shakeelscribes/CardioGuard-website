@@ -61,6 +61,43 @@ export function useAuth() {
     setProfile(null);
   }
 
+  async function signIn(email: string, password: string) {
+    return await supabase.auth.signInWithPassword({ email, password });
+  }
+
+  async function signUp(email: string, password: string) {
+    return await supabase.auth.signUp({ email, password });
+  }
+
+  async function updatePassword(password: string) {
+    return await supabase.auth.updateUser({ password });
+  }
+
+  async function verifyOtp(email: string, token: string, type: 'signup' | 'recovery') {
+    return await supabase.auth.verifyOtp({ email, token, type });
+  }
+
+  async function resetPasswordForEmail(email: string) {
+    return await supabase.auth.resetPasswordForEmail(email);
+  }
+
+  async function uploadAvatar(file: File) {
+    if (!user) throw new Error('Not authenticated');
+    const fileExt = file.name.split('.').pop();
+    const fileName = `avatar.${fileExt}`;
+    const filePath = `${user.id}/${fileName}`;
+    
+    const { error: uploadError } = await supabase.storage
+      .from('avatars')
+      .upload(filePath, file, { upsert: true });
+      
+    if (uploadError) throw uploadError;
+    
+    const { data } = supabase.storage.from('avatars').getPublicUrl(filePath);
+    await updateProfile({ avatar_url: data.publicUrl });
+    return data.publicUrl;
+  }
+
   async function updateProfile(updates: Partial<UserProfile>) {
     if (!user) return { error: new Error('Not authenticated') };
 
@@ -78,5 +115,28 @@ export function useAuth() {
     return { data, error };
   }
 
-  return { user, profile, loading, signOut, updateProfile, refetchProfile: () => user && fetchProfile(user.id) };
+  async function signInWithGoogle() {
+    return await supabase.auth.signInWithOAuth({
+      provider: 'google',
+      options: {
+        redirectTo: typeof window !== 'undefined' ? `${window.location.origin}/dashboard` : undefined
+      }
+    });
+  }
+
+  return { 
+    user, 
+    profile, 
+    loading, 
+    signOut, 
+    signIn, 
+    signUp, 
+    signInWithGoogle,
+    updatePassword, 
+    verifyOtp,
+    resetPasswordForEmail,
+    uploadAvatar, 
+    updateProfile, 
+    refetchProfile: () => user && fetchProfile(user.id) 
+  };
 }

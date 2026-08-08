@@ -1,7 +1,10 @@
 'use client';
 // components/ui/RiskGauge.tsx - Animated circular risk gauge
-import { motion } from 'framer-motion';
+import { useRef } from 'react';
+import gsap from 'gsap';
+import { useGSAP } from '@gsap/react';
 import { RiskLevel } from '@/types';
+import { cn } from '@/lib/utils';
 
 interface RiskGaugeProps {
   score: number; // 0-100
@@ -13,9 +16,9 @@ interface RiskGaugeProps {
 }
 
 const RISK_COLORS: Record<RiskLevel, { stroke: string; bg: string; text: string }> = {
-  low: { stroke: '#1b6d24', bg: '#a0f399', text: 'text-secondary' },
-  medium: { stroke: '#f57c00', bg: '#ffd599', text: 'text-orange-600' },
-  high: { stroke: '#b7181f', bg: '#ffdad6', text: 'text-tertiary' },
+  low: { stroke: '#22c55e', bg: 'rgba(34, 197, 94, 0.1)', text: 'text-green-500' },
+  medium: { stroke: '#f97316', bg: 'rgba(249, 115, 22, 0.1)', text: 'text-orange-500' },
+  high: { stroke: '#ef4444', bg: 'rgba(239, 68, 68, 0.1)', text: 'text-red-500' },
 };
 
 export default function RiskGauge({
@@ -26,6 +29,11 @@ export default function RiskGauge({
   showLabel = true,
   level,
 }: RiskGaugeProps) {
+  const container = useRef<HTMLDivElement>(null);
+  const pathRef = useRef<SVGPathElement>(null);
+  const textRef = useRef<HTMLSpanElement>(null);
+  const badgeRef = useRef<HTMLDivElement>(null);
+
   const radius = (size - strokeWidth) / 2;
   const circumference = radius * Math.PI; // half circle
   const progress = Math.min(Math.max(score, 0), 100);
@@ -38,8 +46,27 @@ export default function RiskGauge({
 
   const riskLabels = { low: 'Low Risk', medium: 'Moderate Risk', high: 'High Risk' };
 
+  useGSAP(() => {
+    gsap.fromTo(pathRef.current, 
+      { strokeDashoffset: circumference },
+      { strokeDashoffset: offset, duration: 1.8, ease: 'power3.out', delay: 0.3 }
+    );
+    
+    gsap.fromTo(textRef.current,
+      { opacity: 0, scale: 0.5 },
+      { opacity: 1, scale: 1, duration: 0.6, ease: 'back.out(1.5)', delay: 0.5 }
+    );
+    
+    if (showLabel && badgeRef.current) {
+      gsap.fromTo(badgeRef.current,
+        { opacity: 0, y: 10 },
+        { opacity: 1, y: 0, duration: 0.5, ease: 'power2.out', delay: 0.8 }
+      );
+    }
+  }, { scope: container, dependencies: [score, level] });
+
   return (
-    <div className="flex flex-col items-center gap-4">
+    <div ref={container} className="flex flex-col items-center gap-4">
       <div className="relative" style={{ width: size, height: size / 2 + strokeWidth }}>
         <svg
           width={size}
@@ -50,20 +77,19 @@ export default function RiskGauge({
           <path
             d={`M ${strokeWidth / 2} ${size / 2} A ${radius} ${radius} 0 0 1 ${size - strokeWidth / 2} ${size / 2}`}
             fill="none"
-            className="gauge-track"
+            className="stroke-muted"
             strokeWidth={strokeWidth}
           />
           {/* Animated fill */}
-          <motion.path
+          <path
+            ref={pathRef}
             d={`M ${strokeWidth / 2} ${size / 2} A ${radius} ${radius} 0 0 1 ${size - strokeWidth / 2} ${size / 2}`}
             fill="none"
             stroke={colors.stroke}
             strokeWidth={strokeWidth}
             strokeLinecap="round"
             strokeDasharray={circumference}
-            initial={{ strokeDashoffset: circumference }}
-            animate={{ strokeDashoffset: offset }}
-            transition={{ duration: 1.8, ease: [0.4, 0, 0.2, 1], delay: 0.3 }}
+            strokeDashoffset={circumference}
           />
         </svg>
 
@@ -72,29 +98,26 @@ export default function RiskGauge({
           className="absolute bottom-0 left-1/2 -translate-x-1/2 flex flex-col items-center"
           style={{ bottom: strokeWidth / 2 }}
         >
-          <motion.span
-            className={`text-4xl font-bold font-jakarta ${colors.text}`}
-            initial={{ opacity: 0, scale: 0.5 }}
-            animate={{ opacity: 1, scale: 1 }}
-            transition={{ duration: 0.6, delay: 0.5 }}
+          <span
+            ref={textRef}
+            className={cn("text-4xl font-bold font-heading", colors.text)}
           >
             {Math.round(progress)}
-          </motion.span>
-          <span className="text-xs text-on-surface-variant font-medium">/ 100</span>
+          </span>
+          <span className="text-xs text-muted-foreground font-medium">/ 100</span>
         </div>
       </div>
 
       {showLabel && (
         <div className="flex flex-col items-center gap-2">
-          <motion.div
-            initial={{ opacity: 0, y: 10 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.5, delay: 0.8 }}
-            className={`chip-${riskLevel} text-sm font-semibold`}
+          <div
+            ref={badgeRef}
+            className="px-3 py-1 rounded-full text-sm font-semibold opacity-0"
+            style={{ backgroundColor: colors.bg, color: colors.stroke }}
           >
             {riskLabels[riskLevel]}
-          </motion.div>
-          <p className="text-xs text-on-surface-variant">{label}</p>
+          </div>
+          <p className="text-xs text-muted-foreground">{label}</p>
         </div>
       )}
     </div>

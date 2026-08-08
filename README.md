@@ -5,7 +5,9 @@
 
 ![Next.js](https://img.shields.io/badge/Next.js-14-black?style=for-the-badge&logo=next.js)
 ![TypeScript](https://img.shields.io/badge/TypeScript-007ACC?style=for-the-badge&logo=typescript&logoColor=white)
+![Status](https://img.shields.io/badge/Status-V2.0%20Ready-success?style=for-the-badge)
 ![Tailwind CSS](https://img.shields.io/badge/Tailwind_CSS-38B2AC?style=for-the-badge&logo=tailwind-css&logoColor=white)
+![shadcn/ui](https://img.shields.io/badge/shadcn%2Fui-000000?style=for-the-badge&logo=shadcnui&logoColor=white)
 ![Supabase](https://img.shields.io/badge/Supabase-3ECF8E?style=for-the-badge&logo=supabase&logoColor=white)
 ![FastAPI](https://img.shields.io/badge/FastAPI-009688?style=for-the-badge&logo=fastapi&logoColor=white)
 ![Vercel](https://img.shields.io/badge/Vercel-000000?style=for-the-badge&logo=vercel&logoColor=white)
@@ -45,9 +47,9 @@ CardioGuard strictly follows a separation-of-concerns architecture, ensuring sca
 | Category | Technology |
 | :--- | :--- |
 | **Framework** | Next.js 14 (React 18), TypeScript |
-| **Styling** | Tailwind CSS |
-| **Animations** | Framer Motion |
-| **Icons & Charts**| Lucide Icons, Recharts |
+| **Styling & UI** | Tailwind CSS, shadcn/ui |
+| **Animations** | GSAP, Framer Motion |
+| **Icons & Charts**| Lucide Icons, Chart.js, Recharts |
 | **BaaS / Database**| Supabase (PostgreSQL, Auth) |
 | **Deployment** | Vercel |
 

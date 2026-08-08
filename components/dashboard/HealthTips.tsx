@@ -37,13 +37,13 @@ export default function HealthTips({ riskLevel }: Props) {
   const tips = tipsByRisk[riskLevel || 'default'] || tipsByRisk.default;
 
   return (
-    <div className="space-y-3">
+    <div className="space-y-4">
       {tips.map(({ icon: Icon, tip, color }, i) => (
-        <div key={i} className="flex items-start gap-3 group">
-          <div className={`w-8 h-8 rounded-lg bg-surface-container dark:bg-dark-surface-container flex items-center justify-center flex-shrink-0 group-hover:scale-110 transition-transform ${color}`}>
-            <Icon className="w-4 h-4" />
+        <div key={i} className="flex items-start gap-4 group">
+          <div className={`w-10 h-10 rounded-xl bg-muted border border-border flex items-center justify-center flex-shrink-0 group-hover:scale-105 transition-transform ${color} shadow-sm`}>
+            <Icon className="w-5 h-5" />
           </div>
-          <p className="text-sm text-on-surface dark:text-white/80 leading-snug pt-1">{tip}</p>
+          <p className="text-sm text-foreground font-medium leading-relaxed pt-2">{tip}</p>
         </div>
       ))}
     </div>

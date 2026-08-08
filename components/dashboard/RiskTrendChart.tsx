@@ -1,85 +1,135 @@
 'use client';
-// components/dashboard/RiskTrendChart.tsx
-import { ResponsiveContainer, AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, ReferenceLine } from 'recharts';
+import { useEffect, useRef, useState } from 'react';
+import {
+  Chart as ChartJS,
+  CategoryScale,
+  LinearScale,
+  BarElement,
+  Title,
+  Tooltip,
+} from 'chart.js';
+import { Bar } from 'react-chartjs-2';
 import { Prediction } from '@/types';
 import { formatDate } from '@/lib/utils';
+import { Activity } from 'lucide-react';
+
+ChartJS.register(CategoryScale, LinearScale, BarElement, Title, Tooltip);
 
 interface Props {
   predictions: Prediction[];
 }
 
-const CustomTooltip = ({ active, payload, label }: any) => {
-  if (active && payload && payload.length) {
-    const risk = payload[0].value;
-    const level = risk < 30 ? 'low' : risk < 60 ? 'medium' : 'high';
-    const colors = { low: '#1b6d24', medium: '#f57c00', high: '#b7181f' };
-    return (
-      <div className="bg-white dark:bg-dark-surface rounded-xl shadow-ambient-md p-3 border border-outline-variant/20 dark:border-dark-border text-sm">
-        <p className="text-on-surface-variant text-xs mb-1">{label}</p>
-        <p className="font-bold" style={{ color: colors[level] }}>
-          Risk: {risk}%
-        </p>
-        <p className="text-xs text-on-surface-variant capitalize">{level} risk</p>
-      </div>
-    );
-  }
-  return null;
-};
-
 export default function RiskTrendChart({ predictions }: Props) {
+  const chartRef = useRef<any>(null);
+  const [theme, setTheme] = useState<'dark' | 'light'>('dark');
+
+  useEffect(() => {
+    const isDark = document.documentElement.classList.contains('dark');
+    setTheme(isDark ? 'dark' : 'light');
+    
+    const observer = new MutationObserver(() => {
+      setTheme(document.documentElement.classList.contains('dark') ? 'dark' : 'light');
+    });
+    observer.observe(document.documentElement, { attributes: true, attributeFilter: ['class'] });
+    return () => observer.disconnect();
+  }, []);
+
   if (predictions.length === 0) {
     return (
-      <div className="h-48 flex items-center justify-center text-on-surface-variant text-sm">
-        No prediction data yet. Run your first assessment!
+      <div className="h-full min-h-[300px] flex items-center justify-center">
+        <div className="text-center space-y-3">
+          <div className="w-12 h-12 rounded-full bg-primary/10 flex items-center justify-center mx-auto">
+            <Activity className="w-6 h-6 text-primary opacity-50" />
+          </div>
+          <p className="text-muted-foreground text-[10px] font-sans tracking-widest uppercase font-bold">No telemetry data yet</p>
+        </div>
       </div>
     );
   }
 
-  const data = [...predictions]
+  const dataPoints = [...predictions]
     .reverse()
     .slice(-20)
-    .map((p) => ({
-      date: formatDate(p.date || (p as any).created_at || new Date().toISOString()),
-      risk: Math.round(p.probability || (p as any).risk_score || 0),
-    }));
+    .map((p) => {
+      const fullDate = formatDate(p.date || (p as any).created_at || new Date().toISOString());
+      return {
+        date: fullDate.split(' ')[0],
+        fullDate: fullDate,
+        risk: Math.round(p.probability || (p as any).risk_score || 0),
+      };
+    });
+
+  const chartData = {
+    labels: dataPoints.map(d => d.date),
+    datasets: [
+      {
+        label: 'Risk Score',
+        data: dataPoints.map(d => d.risk),
+        backgroundColor: (context: any) => {
+          const val = context.raw;
+          if (val < 40) return 'rgba(34, 197, 94, 0.8)'; // Green
+          if (val < 70) return 'rgba(59, 130, 246, 0.8)'; // Blue
+          return 'rgba(239, 68, 68, 0.8)'; // Red
+        },
+        hoverBackgroundColor: (context: any) => {
+          const val = context.raw;
+          if (val < 40) return 'rgba(34, 197, 94, 1)'; 
+          if (val < 70) return 'rgba(59, 130, 246, 1)'; 
+          return 'rgba(239, 68, 68, 1)'; 
+        },
+        borderRadius: 4,
+        barPercentage: 0.6,
+        categoryPercentage: 0.8,
+      },
+    ],
+  };
+
+  const options = {
+    responsive: true,
+    maintainAspectRatio: false,
+    interaction: {
+      mode: 'index' as const,
+      intersect: false,
+    },
+    plugins: {
+      legend: { display: false },
+      tooltip: {
+        backgroundColor: theme === 'dark' ? 'rgba(0,0,0,0.8)' : 'rgba(255,255,255,0.9)',
+        titleColor: theme === 'dark' ? '#fff' : '#000',
+        bodyColor: theme === 'dark' ? '#fff' : '#000',
+        bodyFont: { size: 18, weight: 'bold' as const, family: 'sans-serif' },
+        titleFont: { family: 'sans-serif', size: 10, weight: 'bold' as const },
+        padding: 16,
+        borderColor: 'rgba(255,255,255,0.1)',
+        borderWidth: 1,
+        displayColors: false,
+        callbacks: {
+          title: function(context: any) {
+            return dataPoints[context[0].dataIndex].fullDate;
+          },
+          label: function(context: any) {
+            return `Risk: ${context.parsed.y}%`;
+          }
+        }
+      }
+    },
+    scales: {
+      x: {
+        grid: { display: false, drawBorder: false },
+        ticks: { font: { family: 'sans-serif', size: 10, weight: 'bold' as const }, color: theme === 'dark' ? 'rgba(255,255,255,0.4)' : 'rgba(0,0,0,0.4)', maxTicksLimit: 8 }
+      },
+      y: {
+        min: 0,
+        max: 100,
+        grid: { color: theme === 'dark' ? 'rgba(255,255,255,0.05)' : 'rgba(0,0,0,0.05)', drawBorder: false, borderDash: [5, 5] },
+        ticks: { font: { family: 'sans-serif', size: 10, weight: 'bold' as const }, color: theme === 'dark' ? 'rgba(255,255,255,0.4)' : 'rgba(0,0,0,0.4)' }
+      }
+    },
+  };
 
   return (
-    <div className="h-48">
-      <ResponsiveContainer width="100%" height="100%">
-        <AreaChart data={data} margin={{ top: 5, right: 10, left: -20, bottom: 0 }}>
-          <defs>
-            <linearGradient id="riskGradient" x1="0" y1="0" x2="0" y2="1">
-              <stop offset="5%" stopColor="#005dac" stopOpacity={0.3} />
-              <stop offset="95%" stopColor="#005dac" stopOpacity={0} />
-            </linearGradient>
-          </defs>
-          <CartesianGrid strokeDasharray="3 3" stroke="rgba(65,71,82,0.08)" />
-          <XAxis
-            dataKey="date"
-            tick={{ fontSize: 10, fill: '#414752' }}
-            tickLine={false}
-            axisLine={false}
-          />
-          <YAxis
-            domain={[0, 100]}
-            tick={{ fontSize: 10, fill: '#414752' }}
-            tickLine={false}
-            axisLine={false}
-          />
-          <Tooltip content={<CustomTooltip />} />
-          <ReferenceLine y={60} stroke="#b7181f" strokeDasharray="4 4" strokeOpacity={0.4} />
-          <ReferenceLine y={30} stroke="#1b6d24" strokeDasharray="4 4" strokeOpacity={0.4} />
-          <Area
-            type="monotone"
-            dataKey="risk"
-            stroke="#005dac"
-            strokeWidth={2.5}
-            fill="url(#riskGradient)"
-            dot={{ fill: '#005dac', strokeWidth: 0, r: 3 }}
-            activeDot={{ r: 5, fill: '#1976D2' }}
-          />
-        </AreaChart>
-      </ResponsiveContainer>
+    <div className="w-full h-full min-h-[300px] relative">
+      <Bar ref={chartRef} options={options} data={chartData} />
     </div>
   );
 }

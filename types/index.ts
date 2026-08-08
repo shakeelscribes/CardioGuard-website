@@ -10,6 +10,7 @@ export interface UserProfile {
   gender: string | null;        // e.g. "male" / "female"
   height: number | null;        // cm
   weight: number | null;        // kg
+  dob?: string | null;          // Date of Birth
   // ── optional extras ──
   created_at?: string;
   updated_at?: string;

@@ -1,199 +1,142 @@
 'use client';
-import { useState, Suspense } from 'react';
+import { useState, useRef } from 'react';
 import { useRouter } from 'next/navigation';
-import { motion, AnimatePresence } from 'framer-motion';
-import { supabase } from '@/lib/supabase';
-import { Heart, Eye, EyeOff, Loader2, Lock, ArrowLeft, CheckCircle2, Circle } from 'lucide-react';
-import Link from 'next/link';
+import { useAuth } from '@/hooks/useAuth';
+import gsap from 'gsap';
+import { useGSAP } from '@gsap/react';
+import { ShieldCheck, Loader2, Lock, ArrowLeft, Eye, EyeOff } from 'lucide-react';
 import toast from 'react-hot-toast';
+import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
+import Link from 'next/link';
 
-function UpdatePasswordForm() {
+export default function UpdatePasswordPage() {
   const router = useRouter();
-  const [showPassword, setShowPassword] = useState(false);
+  const { updatePassword } = useAuth();
+  
   const [loading, setLoading] = useState(false);
-  const [form, setForm] = useState({
-    password: '',
-    confirmPassword: '',
-  });
+  const [password, setPassword] = useState('');
+  const [confirmPassword, setConfirmPassword] = useState('');
+  const [showPassword, setShowPassword] = useState(false);
+  const [showConfirmPassword, setShowConfirmPassword] = useState(false);
 
-  function updateForm(field: string, value: string) {
-    setForm(prev => ({ ...prev, [field]: value }));
-  }
+  const container = useRef<HTMLDivElement>(null);
 
-  const requirements = [
-    { regex: /.{8,}/, text: 'At least 8 characters' },
-    { regex: /[A-Z]/, text: 'At least one uppercase letter' },
-    { regex: /[a-z]/, text: 'At least one lowercase letter' },
-    { regex: /[0-9]/, text: 'At least one number' },
-  ];
+  useGSAP(() => {
+    gsap.from('.auth-form', {
+      opacity: 0,
+      y: 20,
+      duration: 0.6,
+      ease: 'power2.out',
+    });
+  }, { scope: container });
 
-  async function handleUpdatePassword(e: React.FormEvent) {
+  async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
-    
-    // Validate requirements
-    const allReqsMet = requirements.every(req => req.regex.test(form.password));
-    if (!allReqsMet) {
-      toast.error('Please meet all password requirements');
+    if (password !== confirmPassword) {
+      toast.error('Passwords do not match');
       return;
     }
-    if (form.password !== form.confirmPassword) {
-      toast.error('Passwords do not match');
+    if (password.length < 8) {
+      toast.error('Password must be at least 8 characters');
       return;
     }
     
     setLoading(true);
     try {
-      const { error } = await supabase.auth.updateUser({
-        password: form.password,
-      });
+      const { error } = await updatePassword(password);
       if (error) throw error;
-      toast.success('Password updated successfully! 🎉');
-      router.push('/dashboard');
+      toast.success('Password updated successfully.');
+      router.push('/profile');
     } catch (err: any) {
-      toast.error(err.message || 'Failed to update password');
+      toast.error(err.message || 'Renewal failed');
     } finally {
       setLoading(false);
     }
   }
 
   return (
-    <div className="min-h-screen flex">
-      {/* Left Panel - Visual */}
-      <div className="hidden lg:flex lg:w-1/2 relative animated-gradient-bg items-center justify-center overflow-hidden">
-        {/* Decorative circles */}
-        <div className="absolute top-1/4 left-1/4 w-64 h-64 rounded-full bg-white/5 blur-2xl" />
-        <div className="absolute bottom-1/4 right-1/4 w-48 h-48 rounded-full bg-cyan-400/10 blur-xl" />
-
-        <div className="relative z-10 text-center px-12">
-          <motion.div
-            animate={{ scale: [1, 1.08, 1] }}
-            transition={{ duration: 3, repeat: Infinity, ease: 'easeInOut' }}
-            className="inline-flex w-24 h-24 rounded-3xl bg-white/20 backdrop-blur-sm items-center justify-center mb-8 shadow-ambient-lg"
-          >
-            <Heart className="w-12 h-12 text-white fill-white" />
-          </motion.div>
-
-          <h2 className="font-jakarta text-4xl font-bold text-white mb-4">
-            Secure your account.
-          </h2>
-          <p className="text-white/70 text-lg leading-relaxed">
-            Update your password to regain access to your heart health dashboard.
-          </p>
-        </div>
-      </div>
-
-      {/* Right Panel - Form */}
-      <div className="flex-1 flex items-center justify-center p-6 bg-background dark:bg-dark-background">
-        <div className="w-full max-w-md">
-          {/* Back to auth */}
-          <Link href="/auth" className="inline-flex items-center gap-2 text-on-surface-variant hover:text-primary text-sm mb-8 transition-colors group">
-            <ArrowLeft className="w-4 h-4 group-hover:-translate-x-1 transition-transform" />
-            Back to Sign In
-          </Link>
-
-          {/* Logo */}
-          <div className="flex items-center gap-2 mb-8">
-            <div className="w-9 h-9 rounded-xl bg-primary-gradient flex items-center justify-center">
-              <Heart className="w-4 h-4 text-white fill-white" />
+    <div className="min-h-screen flex w-full bg-background" ref={container}>
+      <div className="w-full flex flex-col items-center justify-center p-8 relative">
+        <Link href="/profile" className="absolute top-8 left-8 text-muted-foreground hover:text-foreground transition-colors flex items-center gap-2 font-mono text-[10px] uppercase tracking-widest font-bold">
+          <ArrowLeft className="w-4 h-4" /> Return to Profile
+        </Link>
+        
+        <div className="w-full max-w-md auth-form">
+          <div className="mb-10 text-center">
+            <div className="w-16 h-16 rounded-2xl bg-primary/10 flex items-center justify-center text-primary mx-auto mb-6">
+              <ShieldCheck className="w-8 h-8" />
             </div>
-            <span className="font-jakarta font-bold text-lg gradient-text">CardioGuard</span>
+            <h2 className="text-3xl font-heading font-bold text-foreground mb-2">
+              Update Password
+            </h2>
+            <p className="text-muted-foreground font-mono text-xs uppercase tracking-widest font-semibold">
+              Establish a new cryptographic key
+            </p>
           </div>
 
-          <AnimatePresence mode="wait">
-            <motion.div
-              key="update-password"
-              initial={{ opacity: 0, y: 20 }}
-              animate={{ opacity: 1, y: 0 }}
-              exit={{ opacity: 0, y: -20 }}
-            >
-              <h1 className="font-jakarta text-3xl font-bold text-on-surface dark:text-white mb-2">
-                Create New Password
-              </h1>
-              <p className="text-on-surface-variant text-sm mb-8">
-                Your new password must be different from previously used passwords.
-              </p>
-
-              <form onSubmit={handleUpdatePassword} className="space-y-4">
-                <div>
-                  <label className="block text-xs font-medium text-on-surface-variant mb-2">New Password</label>
-                  <div className="relative">
-                    <Lock className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-on-surface-variant" />
-                    <input
-                      type={showPassword ? 'text' : 'password'}
-                      placeholder="Min. 6 characters"
-                      value={form.password}
-                      onChange={e => updateForm('password', e.target.value)}
-                      className="input-field pl-10 pr-10"
-                      required
-                    />
-                    <button
-                      type="button"
-                      onClick={() => setShowPassword(!showPassword)}
-                      className="absolute right-3 top-1/2 -translate-y-1/2 text-on-surface-variant hover:text-primary transition-colors"
-                    >
-                      {showPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
-                    </button>
-                  </div>
-
-                  {/* Password Requirements Checklist */}
-                  <div className="mt-3 space-y-2">
-                    {requirements.map((req, i) => {
-                      const isMet = req.regex.test(form.password);
-                      return (
-                        <div key={i} className="flex items-center gap-2 text-sm transition-colors duration-300">
-                          {isMet ? (
-                            <CheckCircle2 className="w-4 h-4 text-emerald-500" />
-                          ) : (
-                            <Circle className="w-4 h-4 text-on-surface-variant/50" />
-                          )}
-                          <span className={isMet ? 'text-emerald-500 font-medium' : 'text-on-surface-variant'}>
-                            {req.text}
-                          </span>
-                        </div>
-                      );
-                    })}
-                  </div>
-                </div>
-
-                <div>
-                  <label className="block text-xs font-medium text-on-surface-variant mb-2">Confirm New Password</label>
-                  <div className="relative">
-                    <Lock className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-on-surface-variant" />
-                    <input
-                      type="password"
-                      placeholder="••••••••"
-                      value={form.confirmPassword}
-                      onChange={e => updateForm('confirmPassword', e.target.value)}
-                      className="input-field pl-10 pr-10"
-                      required
-                    />
-                  </div>
-                </div>
-
+          <form onSubmit={handleSubmit} className="space-y-6">
+            <div className="space-y-2">
+              <Label htmlFor="password" className="text-xs font-mono tracking-widest text-muted-foreground uppercase font-semibold">New Password</Label>
+              <div className="relative">
+                <Lock className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
+                <Input
+                  id="password"
+                  type={showPassword ? "text" : "password"}
+                  placeholder="••••••••"
+                  value={password}
+                  onChange={(e) => setPassword(e.target.value)}
+                  className="pl-11 pr-11 h-12 rounded-xl border-border bg-muted/50 focus-visible:bg-background"
+                  required
+                />
                 <button
-                  type="submit"
-                  disabled={loading}
-                  className="btn-primary w-full flex items-center justify-center gap-2 py-3 mt-2"
+                  type="button"
+                  onClick={() => setShowPassword(!showPassword)}
+                  className="absolute right-3.5 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground transition-colors"
                 >
-                  {loading ? (
-                    <Loader2 className="w-5 h-5 animate-spin" />
-                  ) : (
-                    'Update Password'
-                  )}
+                  {showPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
                 </button>
-              </form>
-            </motion.div>
-          </AnimatePresence>
+              </div>
+            </div>
+
+            <div className="space-y-2">
+              <Label htmlFor="confirmPassword" className="text-xs font-mono tracking-widest text-muted-foreground uppercase font-semibold">Confirm Password</Label>
+              <div className="relative">
+                <Lock className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
+                <Input
+                  id="confirmPassword"
+                  type={showConfirmPassword ? "text" : "password"}
+                  placeholder="••••••••"
+                  value={confirmPassword}
+                  onChange={(e) => setConfirmPassword(e.target.value)}
+                  className="pl-11 pr-11 h-12 rounded-xl border-border bg-muted/50 focus-visible:bg-background"
+                  required
+                />
+                <button
+                  type="button"
+                  onClick={() => setShowConfirmPassword(!showConfirmPassword)}
+                  className="absolute right-3.5 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground transition-colors"
+                >
+                  {showConfirmPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                </button>
+              </div>
+            </div>
+
+            <Button
+              type="submit"
+              disabled={loading || !password || !confirmPassword}
+              className="w-full h-12 rounded-xl text-base font-bold font-sans bg-primary hover:bg-primary/90 text-primary-foreground shadow-[0_0_20px_rgba(var(--primary),0.3)] transition-all hover:scale-[1.02]"
+            >
+              {loading ? (
+                <Loader2 className="w-5 h-5 animate-spin" />
+              ) : (
+                'Update Password'
+              )}
+            </Button>
+          </form>
         </div>
       </div>
     </div>
-  );
-}
-
-export default function UpdatePasswordPage() {
-  return (
-    <Suspense fallback={<div className="min-h-screen flex items-center justify-center"><div className="w-8 h-8 border-2 border-primary border-t-transparent rounded-full animate-spin" /></div>}>
-      <UpdatePasswordForm />
-    </Suspense>
   );
 }

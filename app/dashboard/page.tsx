@@ -1,238 +1,305 @@
 'use client';
-// app/dashboard/page.tsx - Dashboard
-import { useEffect } from 'react';
+import { useEffect, useRef } from 'react';
 import { useRouter } from 'next/navigation';
-import AppLayout from '@/components/layout/AppLayout';
+import gsap from 'gsap';
+import { useGSAP } from '@gsap/react';
+import UnifiedLayout from '@/components/layout/UnifiedLayout';
 import { useAuth } from '@/hooks/useAuth';
 import { usePredictions } from '@/hooks/usePredictions';
-import { motion } from 'framer-motion';
-import { Activity, TrendingUp, TrendingDown, AlertTriangle, Heart, ArrowRight, Calendar, Lightbulb } from 'lucide-react';
+import { Activity, ShieldAlert, HeartPulse, ArrowRight, Clock, Info, History } from 'lucide-react';
 import Link from 'next/link';
 import AnimatedCounter from '@/components/ui/AnimatedCounter';
+import RiskTrendChart from '@/components/dashboard/RiskTrendChart';
+import RiskFactorsBar from '@/components/dashboard/RiskFactorsBar';
 import RiskGauge from '@/components/ui/RiskGauge';
 import { formatDate, getRiskLabel } from '@/lib/utils';
-import { StaggerContainer, StaggerItem } from '@/components/ui/ScrollReveal';
-import RiskTrendChart from '@/components/dashboard/RiskTrendChart';
-import HealthTips from '@/components/dashboard/HealthTips';
+import PersonalizedInsights from '@/components/dashboard/PersonalizedInsights';
+import { Card, CardContent } from '@/components/ui/card';
+import { Button } from '@/components/ui/button';
 
 export default function DashboardPage() {
   const router = useRouter();
   const { user, profile, loading: authLoading } = useAuth();
   const { predictions, loading: predLoading, stats } = usePredictions(user?.id);
+  const container = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
     if (!authLoading && !user) router.push('/auth');
   }, [authLoading, user, router]);
 
-  if (authLoading || predLoading) {
-    return (
-      <AppLayout>
-        <div className="flex items-center justify-center h-64">
-          <div className="flex items-center gap-3 text-on-surface-variant">
-            <div className="w-6 h-6 border-2 border-primary border-t-transparent rounded-full animate-spin" />
-            <span>Loading your dashboard...</span>
-          </div>
-        </div>
-      </AppLayout>
-    );
-  }
+  useGSAP(() => {
+    if (authLoading || predLoading) return;
 
-  const latestPrediction = stats.latest;
-  const greeting = new Date().getHours() < 12 ? 'Good morning' : new Date().getHours() < 18 ? 'Good afternoon' : 'Good evening';
+    const tl = gsap.timeline();
+    
+    // Ambient glow pulse
+    tl.to('.ambient-glow', {
+      opacity: 0.8,
+      duration: 3,
+      yoyo: true,
+      repeat: -1,
+      ease: 'sine.inOut'
+    });
+
+    // Simulated EKG line background
+    gsap.to('.ekg-line', {
+      xPercent: -100,
+      duration: 5,
+      ease: 'linear',
+      repeat: -1
+    });
+
+    gsap.fromTo('.dash-header', 
+      { opacity: 0, y: -20 }, 
+      { opacity: 1, y: 0, duration: 0.8, ease: 'power3.out' }
+    );
+    
+    // Left Telemetry Panel
+    gsap.fromTo('.telemetry-panel', 
+      { opacity: 0, x: -40 },
+      { opacity: 1, x: 0, duration: 0.8, ease: 'power3.out', delay: 0.2 }
+    );
+
+    // Right Analytics Grid
+    gsap.fromTo('.analytics-card', 
+      { opacity: 0, y: 30 },
+      { opacity: 1, y: 0, duration: 0.6, stagger: 0.1, ease: 'power2.out', delay: 0.3 }
+    );
+
+  }, { scope: container, dependencies: [authLoading, predLoading] });
+
+  const latestPrediction = stats?.latest;
+
+  const safeBmi = latestPrediction?.bmi || (latestPrediction?.weight && latestPrediction?.height ? (latestPrediction.weight / Math.pow(latestPrediction.height / 100, 2)) : 0);
 
   const metricCards = [
-    {
-      label: 'Total Predictions',
-      value: stats.total,
-      icon: Activity,
-      color: 'from-blue-500 to-indigo-600',
-      change: '+1 this week',
-    },
-    {
-      label: 'Average Risk Score',
-      value: Math.round(stats.avgRisk || 0),
-      suffix: '%',
-      icon: Heart,
-      color: 'from-rose-500 to-red-600',
-      change: latestPrediction ? `Latest: ${Math.round(latestPrediction.probability || 0)}%` : 'No data',
-    },
-    {
-      label: 'High Risk Alerts',
-      value: stats.highRiskCount,
-      icon: AlertTriangle,
-      color: 'from-orange-500 to-amber-600',
-      change: `${stats.lowRiskCount} low risk`,
-    },
-    {
-      label: 'Days Tracked',
-      value: predictions.length > 0
+    { label: 'Clinical Scans', value: stats?.total || 0, icon: Activity },
+    { label: 'Mean Risk Index', value: Math.round(stats?.avgRisk || 0), suffix: '%', icon: HeartPulse },
+    { label: 'Critical Alerts', value: stats?.highRiskCount || 0, icon: ShieldAlert },
+    { 
+      label: 'Days Active', 
+      value: predictions?.length > 0
         ? Math.ceil((Date.now() - new Date(predictions[predictions.length - 1]?.date || (predictions[predictions.length - 1] as any)?.created_at || Date.now()).getTime()) / (1000 * 60 * 60 * 24))
-        : 0,
-      suffix: 'd',
-      icon: Calendar,
-      color: 'from-violet-500 to-purple-600',
-      change: 'Since first check',
+        : 0, 
+      suffix: 'd', 
+      icon: Clock 
     },
   ];
 
   return (
-    <AppLayout>
-      <div className="space-y-8 max-w-7xl">
-        {/* Greeting header */}
-        <motion.div
-          initial={{ opacity: 0, y: 20 }}
-          animate={{ opacity: 1, y: 0 }}
-          className="flex items-center justify-between"
-        >
-          <div>
-            <h1 className="font-jakarta text-3xl font-bold text-on-surface dark:text-white">
-              {greeting}, {profile?.name?.split(' ')[0] || 'there'} 👋
-            </h1>
-            <p className="text-on-surface-variant mt-1">
-              {latestPrediction
-                ? `Your last check was on ${formatDate(latestPrediction.date)}`
-                : "Let's start tracking your heart health today"}
-            </p>
+    <UnifiedLayout>
+      <div className="relative min-h-[80vh] w-full" ref={container}>
+        {(authLoading || predLoading) ? (
+          <div className="flex items-center justify-center h-[60vh] absolute inset-0 z-50">
+            <div className="flex flex-col items-center gap-4 text-primary">
+              <Activity className="w-12 h-12 animate-pulse" />
+              <span className="font-mono text-xs tracking-widest uppercase font-bold">Synchronizing Telemetry...</span>
+            </div>
           </div>
-          <Link href="/predict" className="btn-primary flex items-center gap-2 hidden sm:flex">
-            <Activity className="w-4 h-4" />
-            New Prediction
-          </Link>
-        </motion.div>
+        ) : (
+          <div className="space-y-8 pb-12">
+            {/* Ambient Background Glows */}
+            <div className="ambient-glow absolute top-0 right-0 w-[600px] h-[600px] bg-primary/5 rounded-full blur-[120px] pointer-events-none -z-10" />
+            <div className="ambient-glow absolute bottom-0 left-0 w-[800px] h-[800px] bg-primary/10 rounded-full blur-[150px] pointer-events-none -z-10" />
 
-        {/* Summary row: Gauge + Metric Cards */}
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-          {/* Risk gauge card */}
-          <motion.div
-            initial={{ opacity: 0, scale: 0.95 }}
-            animate={{ opacity: 1, scale: 1 }}
-            transition={{ delay: 0.1 }}
-            className="metric-card lg:col-span-1 flex flex-col items-center justify-center gap-4 py-8"
-          >
-            <h3 className="font-jakarta font-bold text-on-surface dark:text-white text-lg">Current Risk Level</h3>
-            {latestPrediction ? (
-              <RiskGauge
-                score={Math.round(latestPrediction.probability || 0)}
-                level={latestPrediction.risk_level as any}
-                size={180}
-              />
-            ) : (
-              <div className="text-center py-6">
-                <div className="w-16 h-16 rounded-2xl bg-surface-container dark:bg-dark-surface-container flex items-center justify-center mx-auto mb-3">
-                  <Activity className="w-8 h-8 text-on-surface-variant" />
-                </div>
-                <p className="text-on-surface-variant text-sm">No predictions yet</p>
-                <Link href="/predict" className="mt-3 inline-flex items-center gap-1 text-primary text-sm font-medium hover:underline">
-                  Run first prediction <ArrowRight className="w-3 h-3" />
-                </Link>
+            {/* Header Section */}
+            <div className="dash-header flex flex-col md:flex-row md:items-end justify-between gap-6 border-b border-border/50 pb-6 relative z-10 opacity-0">
+              <div>
+
+                <h1 className="text-4xl md:text-5xl font-heading font-bold tracking-tight text-foreground">
+                  Command <span className="text-transparent bg-clip-text bg-gradient-to-r from-primary to-primary/60">Center</span>
+                </h1>
+                <p className="mt-2 text-sm text-muted-foreground font-sans">
+                  {latestPrediction 
+                    ? `Last Scan Protocol executed on ${formatDate(latestPrediction.date)}` 
+                    : "System Ready. Awaiting initial scan telemetry."}
+                </p>
               </div>
-            )}
-          </motion.div>
-
-          {/* Metric cards */}
-          <div className="lg:col-span-2 grid grid-cols-2 gap-4">
-            <StaggerContainer className="contents" staggerDelay={0.07}>
-              {metricCards.map(({ label, value, icon: Icon, color, change, suffix }) => (
-                <StaggerItem key={label}>
-                  <div className="metric-card h-full">
-                    <div className={`w-10 h-10 rounded-xl bg-gradient-to-br ${color} flex items-center justify-center mb-4`}>
-                      <Icon className="w-5 h-5 text-white" />
-                    </div>
-                    <div className="text-3xl font-bold font-jakarta text-on-surface dark:text-white mb-1">
-                      <AnimatedCounter end={value} suffix={suffix} />
-                    </div>
-                    <p className="text-sm font-medium text-on-surface dark:text-white/80 mb-1">{label}</p>
-                    <p className="text-xs text-on-surface-variant">{change}</p>
-                  </div>
-                </StaggerItem>
-              ))}
-            </StaggerContainer>
-          </div>
-        </div>
-
-        {/* Chart + Tips row */}
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-          <div className="lg:col-span-2">
-            <motion.div
-              initial={{ opacity: 0, y: 20 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ delay: 0.3 }}
-              className="metric-card"
-            >
-              <div className="flex items-center justify-between mb-6">
-                <h3 className="font-jakarta font-bold text-on-surface dark:text-white">Risk Trend</h3>
-                <Link href="/statistics" className="text-primary text-sm font-medium hover:underline flex items-center gap-1">
-                  Full analytics <ArrowRight className="w-3 h-3" />
-                </Link>
-              </div>
-              <RiskTrendChart predictions={predictions} />
-            </motion.div>
-          </div>
-
-          <div>
-            <motion.div
-              initial={{ opacity: 0, y: 20 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ delay: 0.4 }}
-              className="metric-card h-full"
-            >
-              <div className="flex items-center gap-2 mb-5">
-                <Lightbulb className="w-5 h-5 text-amber-500" />
-                <h3 className="font-jakarta font-bold text-on-surface dark:text-white">Health Tips</h3>
-              </div>
-              <HealthTips riskLevel={latestPrediction?.risk_level?.toLowerCase() as any} />
-            </motion.div>
-          </div>
-        </div>
-
-        {/* Recent predictions */}
-        {predictions.length > 0 && (
-          <motion.div
-            initial={{ opacity: 0, y: 20 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ delay: 0.5 }}
-            className="metric-card"
-          >
-            <div className="flex items-center justify-between mb-5">
-              <h3 className="font-jakarta font-bold text-on-surface dark:text-white">Recent Predictions</h3>
-              <Link href="/history" className="text-primary text-sm font-medium hover:underline flex items-center gap-1">
-                View all <ArrowRight className="w-3 h-3" />
+              <Link href="/predict">
+                <Button className="h-12 px-8 rounded-full bg-primary/10 border border-primary/20 text-primary hover:bg-primary hover:text-primary-foreground shadow-[0_0_20px_rgba(var(--primary),0.2)] hover:shadow-[0_0_30px_rgba(var(--primary),0.4)] hover:-translate-y-0.5 transition-all font-mono text-xs tracking-widest uppercase font-bold">
+                  <Activity className="w-4 h-4 mr-2" />
+                  Initialize Scan
+                </Button>
               </Link>
             </div>
-            <div className="space-y-3">
-              {predictions.slice(0, 5).map((pred, i) => (
-                <motion.div
-                  key={pred.id}
-                  initial={{ opacity: 0, x: -10 }}
-                  animate={{ opacity: 1, x: 0 }}
-                  transition={{ delay: 0.5 + i * 0.05 }}
-                  className="flex items-center justify-between py-3 border-b border-outline-variant/10 dark:border-dark-border last:border-0"
-                >
-                  <div className="flex items-center gap-3">
-                    <div className={`w-2 h-2 rounded-full ${
-                      pred.risk_level?.toLowerCase() === 'low' ? 'bg-secondary' :
-                      pred.risk_level?.toLowerCase() === 'medium' ? 'bg-orange-500' : 'bg-tertiary'
-                    }`} />
+
+            {/* Main Grid Architecture */}
+            <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 relative z-10">
+              
+              {/* LEFT: Live Telemetry Panel (col-span-4) */}
+              <div className="telemetry-panel lg:col-span-4 h-full opacity-0">
+                <Card className="h-full rounded-3xl border border-border/50 bg-gradient-to-b from-card/80 to-primary/5 backdrop-blur-2xl shadow-[0_8px_40px_-12px_rgba(0,0,0,0.2)] hover:shadow-[0_8px_50px_-12px_rgba(var(--primary),0.15)] transition-all duration-500 relative overflow-hidden flex flex-col">
+                  {/* EKG Background Animation */}
+                  <div className="absolute inset-0 opacity-[0.03] overflow-hidden -z-10 flex">
+                     <div className="ekg-line whitespace-nowrap text-[150px] font-bold text-primary flex">
+                        /\/\___/\/\___/\/\___/\/\___/\/\___/\/\___/\/\___
+                     </div>
+                  </div>
+                  
+                  <CardContent className="p-8 h-full flex flex-col justify-between relative z-10">
                     <div>
-                      <p className="text-sm font-medium text-on-surface dark:text-white">
-                        {formatDate(pred.date)}
-                      </p>
+                      <div className="flex justify-between items-center mb-8">
+                        <span className="font-mono text-xs uppercase tracking-widest font-bold text-foreground flex items-center gap-2">
+                          <Activity className="w-4 h-4 text-primary" /> Live Telemetry
+                        </span>
+                        <span className="px-2 py-1 rounded bg-primary/10 text-primary text-[10px] font-mono font-bold border border-primary/20">
+                          ID: {user?.id?.substring(0,6) || 'SYS'}
+                        </span>
+                      </div>
+
+                      {latestPrediction ? (
+                        <div className="flex flex-col items-center">
+                          <div className="relative">
+                            <div className="absolute inset-0 bg-primary/5 rounded-full blur-2xl animate-pulse" />
+                            <div className="bg-muted/80 backdrop-blur-xl border border-border/50 rounded-full p-6 shadow-2xl relative">
+                              <RiskGauge
+                                score={Math.round(latestPrediction.probability || 0)}
+                                level={latestPrediction.risk_level as any}
+                                size={200}
+                              />
+                            </div>
+                          </div>
+                          <div className="text-center mt-6 w-full">
+                            <div className="inline-flex items-center justify-center gap-2 px-4 py-2 rounded-full bg-background/60 border border-border/60 backdrop-blur-md shadow-sm">
+                              <div className={`w-2 h-2 rounded-full animate-pulse ${
+                                latestPrediction.risk_level === 'high' ? 'bg-red-500 shadow-[0_0_10px_rgba(239,68,68,0.8)]' : 
+                                latestPrediction.risk_level === 'medium' ? 'bg-yellow-500 shadow-[0_0_10px_rgba(234,179,8,0.8)]' : 
+                                'bg-green-500 shadow-[0_0_10px_rgba(34,197,94,0.8)]'
+                              }`} />
+                              <span className="text-sm uppercase tracking-widest font-mono font-bold text-foreground">
+                                {getRiskLabel(latestPrediction.risk_level as any)}
+                              </span>
+                            </div>
+                          </div>
+                        </div>
+                      ) : (
+                        <div className="flex-1 flex flex-col items-center justify-center text-center py-20">
+                          <div className="w-16 h-16 rounded-full bg-primary/10 flex items-center justify-center mb-4">
+                            <Activity className="w-8 h-8 text-primary opacity-50" />
+                          </div>
+                          <p className="text-sm opacity-80 font-mono text-muted-foreground">Awaiting initial stream.</p>
+                        </div>
+                      )}
                     </div>
-                  </div>
-                  <div className="flex items-center gap-3">
-                    <span className={`chip-${pred.risk_level?.toLowerCase()} text-xs`}>
-                      {getRiskLabel((pred.risk_level?.toLowerCase() as any) || 'low')}
-                    </span>
-                    <span className="text-sm font-bold text-on-surface dark:text-white">
-                      {Math.round(pred.probability || 0)}%
-                    </span>
-                  </div>
-                </motion.div>
-              ))}
+
+                    {/* Patient Vitals Factor Breakdown */}
+                    {latestPrediction && (
+                      <div className="mt-8 pt-6 border-t border-border/50">
+                        <div className="flex justify-between items-center mb-6">
+                          <span className="font-mono text-xs tracking-widest uppercase font-bold text-foreground">Risk Decomposition</span>
+                        </div>
+                        <RiskFactorsBar prediction={latestPrediction} />
+                      </div>
+                    )}
+                  </CardContent>
+                </Card>
+              </div>
+
+              {/* RIGHT: Analytics Grid (col-span-8) */}
+              <div className="lg:col-span-8 flex flex-col gap-6">
+                
+                {/* Top Row: Metric Cards */}
+                <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+                  {metricCards.map((card, idx) => (
+                    <Card key={idx} className="analytics-card opacity-0 rounded-2xl border border-border/50 bg-gradient-to-br from-card/80 to-card/40 backdrop-blur-xl shadow-lg hover:shadow-[0_0_30px_rgba(var(--primary),0.2)] hover:border-primary/40 hover:-translate-y-1 transition-all duration-300 group">
+                      <CardContent className="p-5 h-full flex flex-col justify-between gap-4 relative overflow-hidden">
+                        <div className="absolute top-0 right-0 w-16 h-16 bg-primary/10 rounded-full blur-xl -translate-y-1/2 translate-x-1/2 group-hover:bg-primary/20 transition-colors" />
+                        
+                        <div className="w-10 h-10 rounded-xl bg-primary/10 flex items-center justify-center text-primary shadow-[0_0_15px_rgba(var(--primary),0.2)] border border-primary/20 relative z-10">
+                          <card.icon className="w-5 h-5" />
+                        </div>
+                        
+                        <div className="relative z-10">
+                          <div className="text-3xl font-heading font-bold text-foreground">
+                            <AnimatedCounter end={card.value} suffix={card.suffix} />
+                          </div>
+                          <div className="text-[10px] font-mono uppercase tracking-widest text-foreground font-bold mt-1">
+                            {card.label}
+                          </div>
+                        </div>
+                      </CardContent>
+                    </Card>
+                  ))}
+                </div>
+
+                {/* Middle Row: Massive Trend Chart */}
+                <Card className="analytics-card opacity-0 rounded-3xl border border-border/50 bg-gradient-to-br from-card/80 to-primary/5 backdrop-blur-2xl shadow-lg hover:shadow-[0_0_40px_rgba(var(--primary),0.15)] transition-all duration-500 flex flex-col">
+                  <CardContent className="p-6 h-full flex flex-col">
+                    <div className="flex justify-between items-center mb-6">
+                      <span className="font-mono text-xs tracking-widest uppercase font-bold text-foreground flex items-center gap-2">
+                        <Activity className="w-3 h-3 text-primary" /> Risk Trajectory Analysis
+                      </span>
+                      <Link href="/statistics" className="text-primary text-[10px] font-mono uppercase tracking-widest hover:underline flex items-center gap-1 bg-primary/10 px-3 py-1.5 rounded-full border border-primary/20">
+                        Full Analytics <ArrowRight className="w-3 h-3" />
+                      </Link>
+                    </div>
+                    <div className="flex-1 w-full min-h-[300px]">
+                      <RiskTrendChart predictions={predictions} />
+                    </div>
+                  </CardContent>
+                </Card>
+
+                {/* Bottom Row: Directives & Recent Logs */}
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                  
+                  <Card className="analytics-card opacity-0 rounded-3xl border border-border/50 bg-gradient-to-br from-card/80 to-card/40 backdrop-blur-2xl shadow-lg hover:shadow-[0_0_30px_rgba(var(--primary),0.2)] transition-all duration-500 flex flex-col">
+                    <CardContent className="p-6">
+                      <div className="flex items-center gap-2 mb-6">
+                        <div className="w-6 h-6 rounded-md bg-primary/10 flex items-center justify-center border border-primary/20">
+                          <Info className="w-3 h-3 text-primary" />
+                        </div>
+                        <span className="font-mono text-xs tracking-widest uppercase font-bold text-foreground">Clinical Directives</span>
+                      </div>
+                      <PersonalizedInsights prediction={latestPrediction} />
+                    </CardContent>
+                  </Card>
+
+                  <Card className="analytics-card opacity-0 rounded-3xl border border-border/50 bg-gradient-to-br from-card/80 to-card/40 backdrop-blur-2xl shadow-lg hover:shadow-[0_0_30px_rgba(var(--primary),0.2)] transition-all duration-500 flex flex-col">
+                    <CardContent className="p-6 flex flex-col h-full">
+                      <div className="flex justify-between items-center mb-6">
+                        <div className="flex items-center gap-2">
+                          <div className="w-6 h-6 rounded-md bg-primary/10 flex items-center justify-center border border-primary/20">
+                            <History className="w-3 h-3 text-primary" />
+                          </div>
+                          <span className="font-mono text-xs tracking-widest uppercase font-bold text-foreground">Recent Scans</span>
+                        </div>
+                      </div>
+                      
+                      <div className="flex-1 flex flex-col gap-3">
+                        {predictions.length > 0 ? (
+                          predictions.slice(0, 4).map((pred) => (
+                            <div key={pred.id} className="group flex items-center justify-between p-3 rounded-xl bg-foreground/5 border border-border/30 hover:border-primary/30 transition-colors">
+                              <div className="flex items-center gap-3">
+                                <div className={`w-2 h-2 rounded-full shadow-[0_0_8px_currentColor] ${
+                                  pred.risk_level?.toLowerCase() === 'low' ? 'text-green-500 bg-green-500' :
+                                  pred.risk_level?.toLowerCase() === 'medium' ? 'text-yellow-500 bg-yellow-500' : 'text-red-500 bg-red-500'
+                                }`} />
+                                <div className="flex flex-col">
+                                  <span className="text-sm font-medium text-foreground">{formatDate(pred.date)}</span>
+                                  <span className="text-[10px] font-mono tracking-widest uppercase font-bold text-muted-foreground">
+                                    {getRiskLabel(pred.risk_level as any)}
+                                  </span>
+                                </div>
+                              </div>
+                              <span className="font-heading font-bold text-lg text-primary">{Math.round(pred.probability || 0)}%</span>
+                            </div>
+                          ))
+                        ) : (
+                          <div className="flex-1 flex items-center justify-center text-center text-muted-foreground font-mono text-xs">
+                            No records found.
+                          </div>
+                        )}
+                      </div>
+                    </CardContent>
+                  </Card>
+
+                </div>
+
+              </div>
             </div>
-          </motion.div>
+          </div>
         )}
       </div>
-    </AppLayout>
+    </UnifiedLayout>
   );
 }

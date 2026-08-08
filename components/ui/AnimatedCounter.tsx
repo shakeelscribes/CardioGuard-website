@@ -1,7 +1,8 @@
 'use client';
 // components/ui/AnimatedCounter.tsx
-import { useEffect, useRef, useState } from 'react';
-import { useInView } from 'framer-motion';
+import { useState, useRef } from 'react';
+import gsap from 'gsap';
+import { useGSAP } from '@gsap/react';
 
 interface AnimatedCounterProps {
   end: number;
@@ -21,35 +22,22 @@ export default function AnimatedCounter({
   decimals = 0,
 }: AnimatedCounterProps) {
   const [current, setCurrent] = useState(0);
-  const ref = useRef<HTMLSpanElement>(null);
-  const isInView = useInView(ref, { once: true, margin: '-50px' });
-  const startedRef = useRef(false);
+  const container = useRef<HTMLSpanElement>(null);
 
-  useEffect(() => {
-    if (!isInView || startedRef.current) return;
-    startedRef.current = true;
-
-    const startTime = performance.now();
-
-    function step(timestamp: number) {
-      const elapsed = timestamp - startTime;
-      const progress = Math.min(elapsed / duration, 1);
-      const eased = 1 - Math.pow(1 - progress, 4); // easeOutQuart
-      const value = eased * end;
-      setCurrent(parseFloat(value.toFixed(decimals)));
-
-      if (progress < 1) {
-        requestAnimationFrame(step);
-      } else {
-        setCurrent(end);
-      }
-    }
-
-    requestAnimationFrame(step);
-  }, [isInView, end, duration, decimals]);
+  useGSAP(() => {
+    const obj = { val: 0 };
+    gsap.to(obj, {
+      val: end,
+      duration: duration / 1000,
+      ease: 'power3.out',
+      onUpdate: () => {
+        setCurrent(parseFloat(obj.val.toFixed(decimals)));
+      },
+    });
+  }, { scope: container, dependencies: [end, duration, decimals] });
 
   return (
-    <span ref={ref} className={className}>
+    <span ref={container} className={className}>
       {prefix}{current.toLocaleString()}{suffix}
     </span>
   );

@@ -1,316 +1,304 @@
 'use client';
-// app/profile/page.tsx - User Profile with avatar upload
-import { useState, useEffect, useRef } from 'react';
+import { useState, useRef, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
-import { motion } from 'framer-motion';
-import AppLayout from '@/components/layout/AppLayout';
+import gsap from 'gsap';
+import { useGSAP } from '@gsap/react';
+import UnifiedLayout from '@/components/layout/UnifiedLayout';
 import { useAuth } from '@/hooks/useAuth';
-import { supabase } from '@/lib/supabase';
+import { User, ShieldCheck, Loader2, Camera, Lock, CheckCircle2 } from 'lucide-react';
+import { Card, CardContent } from '@/components/ui/card';
+import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
+import { Button } from '@/components/ui/button';
+import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
 import toast from 'react-hot-toast';
-import { Camera, User, Mail, Save, Loader2, Shield, LogOut, Ruler, Weight } from 'lucide-react';
+import Link from 'next/link';
 
 export default function ProfilePage() {
   const router = useRouter();
-  // NOTE: profile columns in Supabase (set by Flutter app):
-  //   name, age, gender, height, weight, avatar_url
-  const { user, profile, loading: authLoading, updateProfile, signOut } = useAuth();
-  const fileRef = useRef<HTMLInputElement>(null);
-
-  const [form, setForm] = useState({
+  const { user, profile, updateProfile, uploadAvatar, loading: authLoading } = useAuth();
+  const container = useRef<HTMLDivElement>(null);
+  
+  const [loading, setLoading] = useState(false);
+  const [avatarLoading, setAvatarLoading] = useState(false);
+  
+  const [formData, setFormData] = useState({
     name: '',
+    dob: '',
     age: '',
-    gender: '',
+    gender: 'Male',
     height: '',
-    weight: '',
+    weight: ''
   });
-  const [saving, setSaving] = useState(false);
-  const [uploading, setUploading] = useState(false);
-  const [avatarUrl, setAvatarUrl] = useState<string | null>(null);
 
   useEffect(() => {
-    if (!authLoading && !user) router.push('/auth');
-  }, [authLoading, user, router]);
-
-  // Populate form from existing profile data
-  useEffect(() => {
-    if (profile) {
-      setForm({
+    if (!authLoading && !user) {
+      router.push('/auth');
+    } else if (profile) {
+      setFormData({
         name: profile.name || '',
-        age: profile.age != null ? String(profile.age) : '',
-        gender: profile.gender || '',
-        height: profile.height != null ? String(profile.height) : '',
-        weight: profile.weight != null ? String(profile.weight) : '',
+        dob: profile.dob || '',
+        age: profile.age?.toString() || '',
+        gender: profile.gender || 'Male',
+        height: profile.height?.toString() || '',
+        weight: profile.weight?.toString() || ''
       });
-      setAvatarUrl(profile.avatar_url);
     }
-  }, [profile]);
+  }, [authLoading, user, profile, router]);
 
-  function update(field: string, value: string) {
-    setForm(prev => ({ ...prev, [field]: value }));
-  }
-
-  async function handleSave(e: React.FormEvent) {
-    e.preventDefault();
-    setSaving(true);
-    const { error } = await updateProfile({
-      name: form.name,
-      age: form.age ? Number(form.age) : null,
-      gender: form.gender,
-      height: form.height ? Number(form.height) : null,
-      weight: form.weight ? Number(form.weight) : null,
+  useGSAP(() => {
+    if (authLoading) return;
+    
+    gsap.from('.profile-header', { opacity: 0, y: -20, duration: 0.8, ease: 'power3.out' });
+    gsap.from('.profile-card', { opacity: 0, y: 30, duration: 0.6, stagger: 0.15, ease: 'power2.out', delay: 0.2 });
+    
+    gsap.to('.ambient-glow', {
+      opacity: 0.6,
+      duration: 3,
+      yoyo: true,
+      repeat: -1,
+      ease: 'sine.inOut'
     });
-    if (!error) {
-      toast.success('Profile updated successfully!');
-    } else {
-      toast.error('Failed to update profile');
-    }
-    setSaving(false);
-  }
+  }, { scope: container, dependencies: [authLoading] });
 
-  async function handleAvatarUpload(e: React.ChangeEvent<HTMLInputElement>) {
-    const file = e.target.files?.[0];
-    if (!file || !user) return;
-
-    if (file.size > 5 * 1024 * 1024) {
-      toast.error('Image must be smaller than 5MB');
-      return;
-    }
-
-    setUploading(true);
-    const ext = file.name.split('.').pop();
-    const path = `${user.id}/avatar.${ext}`;
-
+  const handleAvatarChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
     try {
-      const { error: uploadError } = await supabase.storage
-        .from('avatars')
-        .upload(path, file, { upsert: true });
-
-      if (uploadError) throw uploadError;
-
-      const { data } = supabase.storage.from('avatars').getPublicUrl(path);
-      const url = data.publicUrl + `?t=${Date.now()}`;
-      setAvatarUrl(url);
-      await updateProfile({ avatar_url: url });
-      toast.success('Avatar updated!');
-    } catch (err: any) {
-      toast.error(err.message || 'Upload failed');
+      if (!e.target.files || e.target.files.length === 0) return;
+      const file = e.target.files[0];
+      
+      if (file.size > 5 * 1024 * 1024) {
+        toast.error('Avatar file size must be less than 5MB');
+        return;
+      }
+      
+      setAvatarLoading(true);
+      await uploadAvatar(file);
+      toast.success('Visual identifier updated successfully');
+    } catch (error: any) {
+      toast.error('Failed to update avatar: ' + error.message);
     } finally {
-      setUploading(false);
+      setAvatarLoading(false);
     }
-  }
+  };
 
-  async function handleSignOut() {
-    await signOut();
-    router.push('/');
-  }
-
-  if (authLoading) return null;
-
-  // Use `name` (the real DB column) for initials
-  const initials = profile?.name
-    ? profile.name.split(' ').map((n: string) => n[0]).join('').toUpperCase().slice(0, 2)
-    : (user?.email?.[0]?.toUpperCase() ?? 'U');
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setLoading(true);
+    
+    let calculatedAge = parseInt(formData.age);
+    if (formData.dob) {
+      const birthDate = new Date(formData.dob);
+      const today = new Date();
+      let age = today.getFullYear() - birthDate.getFullYear();
+      const m = today.getMonth() - birthDate.getMonth();
+      if (m < 0 || (m === 0 && today.getDate() < birthDate.getDate())) {
+        age--;
+      }
+      calculatedAge = age;
+    }
+    
+    try {
+      await updateProfile({
+        name: formData.name,
+        dob: formData.dob || null,
+        age: calculatedAge,
+        gender: formData.gender,
+        height: parseFloat(formData.height),
+        weight: parseFloat(formData.weight)
+      });
+      toast.success('Biometric profile synchronized successfully');
+    } catch (error: any) {
+      toast.error('Failed to update profile: ' + error.message);
+    } finally {
+      setLoading(false);
+    }
+  };
 
   return (
-    <AppLayout>
-      <div className="max-w-3xl space-y-8">
-        {/* Header */}
-        <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }}>
-          <h1 className="font-jakarta text-3xl font-bold text-on-surface dark:text-white mb-1">Profile & Settings</h1>
-          <p className="text-on-surface-variant">Manage your personal information and preferences</p>
-        </motion.div>
+    <UnifiedLayout>
+      {authLoading ? (
+        <div className="flex flex-col items-center justify-center min-h-[80vh] text-primary">
+          <Loader2 className="w-12 h-12 animate-spin mb-4" />
+          <span className="font-mono text-xs tracking-widest uppercase font-bold">Verifying Credentials...</span>
+        </div>
+      ) : (
+        <div className="max-w-5xl mx-auto pb-12 relative" ref={container}>
+          
+          {/* Ambient Background Glows */}
+          <div className="ambient-glow absolute top-10 left-[-10%] w-[500px] h-[500px] bg-primary/10 rounded-full blur-[120px] pointer-events-none -z-10" />
+          <div className="ambient-glow absolute bottom-10 right-[-10%] w-[600px] h-[600px] bg-primary/5 rounded-full blur-[150px] pointer-events-none -z-10" />
 
-        {/* Avatar card */}
-        <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.1 }}
-          className="metric-card flex items-center gap-6">
-          {/* Avatar */}
-          <div className="relative group cursor-pointer" onClick={() => fileRef.current?.click()}>
-            <div className="w-24 h-24 rounded-2xl overflow-hidden bg-primary-gradient flex items-center justify-center flex-shrink-0">
-              {avatarUrl ? (
-                <img src={avatarUrl} alt="Avatar" className="w-full h-full object-cover" />
-              ) : (
-                <span className="text-white font-bold text-3xl font-jakarta">{initials}</span>
-              )}
-            </div>
-            <div className={`absolute inset-0 rounded-2xl bg-black/40 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity ${uploading ? 'opacity-100' : ''}`}>
-              {uploading ? (
-                <Loader2 className="w-6 h-6 text-white animate-spin" />
-              ) : (
-                <Camera className="w-6 h-6 text-white" />
-              )}
-            </div>
-          </div>
-          <input ref={fileRef} type="file" accept="image/*" onChange={handleAvatarUpload} className="hidden" />
-
-          {/* User info */}
-          <div className="flex-1">
-            <h2 className="font-jakarta text-2xl font-bold text-on-surface dark:text-white">
-              {profile?.name || 'Your Name'}
-            </h2>
-            <p className="text-on-surface-variant">{user?.email}</p>
-            {profile?.age && (
-              <p className="text-sm text-on-surface-variant mt-0.5">Age: {profile.age}</p>
-            )}
-            <p className="text-xs text-on-surface-variant mt-1">
-              Member since {profile?.created_at
-                ? new Date(profile.created_at).toLocaleDateString('en-US', { month: 'long', year: 'numeric' })
-                : 'recently'}
-            </p>
-            <button
-              onClick={() => fileRef.current?.click()}
-              className="mt-3 text-sm text-primary font-medium hover:underline flex items-center gap-1"
-            >
-              <Camera className="w-3.5 h-3.5" />
-              {avatarUrl ? 'Change photo' : 'Upload photo'}
-            </button>
-          </div>
-        </motion.div>
-
-        {/* Profile form */}
-        <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.2 }}
-          className="metric-card">
-          <h3 className="font-jakarta font-bold text-on-surface dark:text-white mb-6">Personal Information</h3>
-
-          <form onSubmit={handleSave} className="space-y-5">
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
-
-              {/* Name */}
-              <div>
-                <label className="block text-xs font-medium text-on-surface-variant mb-2">Full Name</label>
-                <div className="relative">
-                  <User className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-on-surface-variant" />
-                  <input
-                    type="text"
-                    value={form.name}
-                    onChange={e => update('name', e.target.value)}
-                    placeholder="Jane Smith"
-                    className="input-field pl-10"
-                  />
-                </div>
-              </div>
-
-              {/* Email (readonly) */}
-              <div>
-                <label className="block text-xs font-medium text-on-surface-variant mb-2">Email</label>
-                <div className="relative">
-                  <Mail className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-on-surface-variant" />
-                  <input
-                    type="email"
-                    value={user?.email || ''}
-                    disabled
-                    className="input-field pl-10 opacity-60 cursor-not-allowed"
-                  />
-                </div>
-              </div>
-
-              {/* Age */}
-              <div>
-                <label className="block text-xs font-medium text-on-surface-variant mb-2">Age (years)</label>
-                <input
-                  type="number"
-                  min={1}
-                  max={120}
-                  value={form.age}
-                  onChange={e => update('age', e.target.value)}
-                  placeholder="e.g. 35"
-                  className="input-field"
-                />
-              </div>
-
-
-
-              {/* Height */}
-              <div>
-                <label className="block text-xs font-medium text-on-surface-variant mb-2">Height (cm)</label>
-                <div className="relative">
-                  <Ruler className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-on-surface-variant" />
-                  <input
-                    type="number"
-                    min={100}
-                    max={250}
-                    value={form.height}
-                    onChange={e => update('height', e.target.value)}
-                    placeholder="e.g. 170"
-                    className="input-field pl-10"
-                  />
-                </div>
-              </div>
-
-              {/* Weight */}
-              <div>
-                <label className="block text-xs font-medium text-on-surface-variant mb-2">Weight (kg)</label>
-                <div className="relative">
-                  <Weight className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-on-surface-variant" />
-                  <input
-                    type="number"
-                    min={20}
-                    max={300}
-                    value={form.weight}
-                    onChange={e => update('weight', e.target.value)}
-                    placeholder="e.g. 70"
-                    className="input-field pl-10"
-                  />
-                </div>
-              </div>
-            </div>
-
-            {/* Gender */}
+          <div className="profile-header border-b border-border/50 pb-6 mb-8 flex flex-col md:flex-row md:items-end justify-between gap-6">
             <div>
-              <label className="block text-xs font-medium text-on-surface-variant mb-2">Biological Sex</label>
-              <div className="flex gap-3">
-                {['Female', 'Male', 'Other'].map(option => (
-                  <button
-                    key={option}
-                    type="button"
-                    onClick={() => update('gender', option)}
-                    className={`flex-1 py-2.5 rounded-xl text-sm font-medium transition-all ${
-                      form.gender === option
-                        ? 'bg-primary text-white shadow-glow'
-                        : 'bg-surface-container dark:bg-dark-surface text-on-surface-variant hover:text-primary border border-outline-variant/20 dark:border-dark-border'
-                    }`}
-                  >
-                    {option}
-                  </button>
-                ))}
-              </div>
+
+              <h1 className="text-4xl md:text-5xl font-heading font-bold tracking-tight text-foreground">
+                Entity <span className="text-transparent bg-clip-text bg-gradient-to-r from-primary to-primary/60">Profile</span>
+              </h1>
+              <p className="mt-2 text-sm text-muted-foreground font-sans">
+                Manage Biometric Identity & Security protocols
+              </p>
             </div>
-
-            <button type="submit" disabled={saving} className="btn-primary flex items-center gap-2 mt-2">
-              {saving ? <Loader2 className="w-4 h-4 animate-spin" /> : <Save className="w-4 h-4" />}
-              {saving ? 'Saving...' : 'Save Changes'}
-            </button>
-          </form>
-        </motion.div>
-
-        {/* Account section */}
-        <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.3 }}
-          className="metric-card">
-          <h3 className="font-jakarta font-bold text-on-surface dark:text-white mb-5">Account</h3>
-          <div className="space-y-3">
-            <div className="flex items-center justify-between p-4 rounded-xl bg-surface-container dark:bg-dark-surface-container">
-              <div className="flex items-center gap-3">
-                <Shield className="w-5 h-5 text-secondary" />
-                <div>
-                  <p className="text-sm font-medium text-on-surface dark:text-white">HIPAA Compliant Storage</p>
-                  <p className="text-xs text-on-surface-variant">Your data is encrypted and secure</p>
-                </div>
-              </div>
-              <span className="chip-low text-xs">Active</span>
+            <div className="flex items-center gap-2 px-4 py-2 bg-primary/10 rounded-full text-primary font-mono text-[10px] tracking-widest uppercase font-bold shadow-[0_0_15px_rgba(var(--primary),0.1)] border border-primary/20">
+              <ShieldCheck className="w-4 h-4" />
+              End-to-End Encrypted
             </div>
-
-            <button
-              onClick={handleSignOut}
-              className="w-full flex items-center gap-3 p-4 rounded-xl hover:bg-tertiary/5 text-tertiary transition-all text-left"
-            >
-              <LogOut className="w-5 h-5" />
-              <div>
-                <p className="text-sm font-medium">Sign Out</p>
-                <p className="text-xs opacity-70">Sign out from all devices</p>
-              </div>
-            </button>
           </div>
-        </motion.div>
-      </div>
-    </AppLayout>
+
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-8 relative z-10">
+            
+            {/* Avatar Section */}
+            <div className="md:col-span-1 space-y-6">
+              <Card className="profile-card rounded-[2rem] border border-border/50 shadow-2xl bg-card/60 backdrop-blur-3xl overflow-hidden relative">
+                <div className="absolute inset-0 bg-gradient-to-br from-white/5 to-transparent pointer-events-none" />
+                <CardContent className="p-8 flex flex-col items-center text-center relative z-10">
+                  <div className="relative group mb-8 mt-4">
+                    {/* Scanning Ring Effect */}
+                    <div className="absolute -inset-4 rounded-full border border-primary/20 group-hover:border-primary/50 group-hover:scale-110 transition-all duration-500" />
+                    <div className="absolute -inset-2 rounded-full border-2 border-primary/10 border-t-primary/60 animate-spin-slow" />
+                    
+                    <div className="w-36 h-36 rounded-full overflow-hidden border-4 border-background shadow-[0_0_30px_rgba(var(--primary),0.15)] bg-muted/50 flex items-center justify-center relative z-10">
+                      {avatarLoading ? (
+                        <Loader2 className="w-8 h-8 animate-spin text-primary" />
+                      ) : profile?.avatar_url ? (
+                        <img src={profile.avatar_url} alt="Avatar" className="w-full h-full object-cover" />
+                      ) : (
+                        <User className="w-16 h-16 text-muted-foreground/50" />
+                      )}
+                    </div>
+                    <div className="absolute inset-0 bg-black/60 rounded-full opacity-0 group-hover:opacity-100 transition-opacity z-20 flex items-center justify-center backdrop-blur-sm cursor-pointer">
+                      <label htmlFor="avatar-upload" className="cursor-pointer flex flex-col items-center">
+                        <Camera className="w-6 h-6 text-white mb-2" />
+                        <span className="text-[10px] font-mono tracking-widest text-white uppercase font-bold">Update</span>
+                      </label>
+                    </div>
+                    <input
+                      id="avatar-upload"
+                      type="file"
+                      accept="image/*"
+                      className="hidden"
+                      onChange={handleAvatarChange}
+                      disabled={avatarLoading}
+                    />
+                  </div>
+                  
+                  <h3 className="font-heading font-bold text-2xl text-foreground mb-2">{profile?.name || 'Unknown Entity'}</h3>
+                  <p className="text-muted-foreground font-mono text-[10px] lowercase tracking-widest">{user?.email}</p>
+                </CardContent>
+              </Card>
+
+              <Card className="profile-card rounded-[2rem] border border-border/50 shadow-2xl bg-card/60 backdrop-blur-3xl overflow-hidden">
+                <CardContent className="p-6">
+                  <Link href="/update-password">
+                    <Button variant="outline" className="w-full rounded-2xl h-14 gap-3 font-mono text-xs uppercase tracking-widest font-bold border-primary/20 hover:bg-primary/10 hover:text-primary transition-all hover:scale-[1.02] shadow-[0_0_15px_rgba(var(--primary),0.05)]">
+                      <Lock className="w-4 h-4" />
+                      Update Password
+                    </Button>
+                  </Link>
+                </CardContent>
+              </Card>
+            </div>
+
+            {/* Form Section */}
+            <div className="md:col-span-2">
+              <Card className="profile-card rounded-[2rem] border border-border/50 shadow-2xl bg-card/60 backdrop-blur-3xl overflow-hidden relative">
+                <div className="h-1 w-full bg-gradient-to-r from-primary/50 via-primary to-primary/50" />
+                <div className="absolute inset-0 bg-gradient-to-br from-white/5 to-transparent pointer-events-none" />
+                
+                <CardContent className="p-8 md:p-12 relative z-10">
+                  <form onSubmit={handleSubmit} className="space-y-8">
+                    <div className="space-y-6">
+                      <div className="flex items-center gap-3 mb-8 border-b border-border/50 pb-6">
+                        <div className="w-10 h-10 rounded-xl bg-primary/10 flex items-center justify-center border border-primary/20">
+                          <CheckCircle2 className="w-5 h-5 text-primary" />
+                        </div>
+                        <h2 className="text-xl font-heading font-bold text-foreground tracking-tight">Baseline Metrics</h2>
+                      </div>
+                      
+                      <div className="space-y-3">
+                        <Label className="font-mono text-[10px] uppercase tracking-widest font-bold text-muted-foreground ml-1">Entity Designation (Full Name)</Label>
+                        <Input
+                          value={formData.name}
+                          onChange={(e) => setFormData({...formData, name: e.target.value})}
+                          className="h-16 rounded-2xl bg-muted/30 border-transparent hover:bg-muted/50 focus-visible:bg-background focus-visible:border-primary/50 focus-visible:ring-2 focus-visible:ring-primary/20 transition-all text-lg shadow-inner px-6"
+                          placeholder="John Doe"
+                        />
+                      </div>
+
+                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-8">
+                        <div className="space-y-3">
+                          <Label className="font-mono text-[10px] uppercase tracking-widest font-bold text-muted-foreground ml-1">Date of Birth</Label>
+                          <Input
+                            type="date"
+                            value={formData.dob}
+                            onChange={(e) => setFormData({...formData, dob: e.target.value})}
+                            className="h-16 rounded-2xl bg-muted/30 border-transparent hover:bg-muted/50 focus-visible:bg-background focus-visible:border-primary/50 focus-visible:ring-2 focus-visible:ring-primary/20 transition-all text-lg shadow-inner px-6 [&::-webkit-calendar-picker-indicator]:opacity-50 hover:[&::-webkit-calendar-picker-indicator]:opacity-100"
+                          />
+                        </div>
+                        
+                        <div className="space-y-3">
+                          <Label className="font-mono text-[10px] uppercase tracking-widest font-bold text-muted-foreground ml-1">Biological Classification</Label>
+                          <RadioGroup 
+                            value={formData.gender} 
+                            onValueChange={(val) => setFormData({...formData, gender: val})}
+                            className="flex gap-4 h-16"
+                          >
+                            <Label className={`flex-1 flex items-center justify-center rounded-2xl border border-transparent cursor-pointer transition-all ${formData.gender === 'Male' ? 'bg-primary/10 text-primary border-primary/30 shadow-[0_0_15px_rgba(var(--primary),0.1)]' : 'bg-muted/30 text-muted-foreground hover:bg-muted/50'}`}>
+                              <RadioGroupItem value="Male" className="sr-only" />
+                              <span className="font-heading font-bold text-lg">Male</span>
+                            </Label>
+                            <Label className={`flex-1 flex items-center justify-center rounded-2xl border border-transparent cursor-pointer transition-all ${formData.gender === 'Female' ? 'bg-primary/10 text-primary border-primary/30 shadow-[0_0_15px_rgba(var(--primary),0.1)]' : 'bg-muted/30 text-muted-foreground hover:bg-muted/50'}`}>
+                              <RadioGroupItem value="Female" className="sr-only" />
+                              <span className="font-heading font-bold text-lg">Female</span>
+                            </Label>
+                          </RadioGroup>
+                        </div>
+                      </div>
+
+                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-8">
+                        <div className="space-y-3">
+                          <Label className="font-mono text-[10px] uppercase tracking-widest font-bold text-muted-foreground ml-1">Height Baseline (cm)</Label>
+                          <Input
+                            type="number"
+                            value={formData.height}
+                            onChange={(e) => setFormData({...formData, height: e.target.value})}
+                            className="h-16 rounded-2xl bg-muted/30 border-transparent hover:bg-muted/50 focus-visible:bg-background focus-visible:border-primary/50 focus-visible:ring-2 focus-visible:ring-primary/20 transition-all text-lg shadow-inner px-6"
+                            placeholder="175"
+                          />
+                        </div>
+                        
+                        <div className="space-y-3">
+                          <Label className="font-mono text-[10px] uppercase tracking-widest font-bold text-muted-foreground ml-1">Weight Baseline (kg)</Label>
+                          <Input
+                            type="number"
+                            value={formData.weight}
+                            onChange={(e) => setFormData({...formData, weight: e.target.value})}
+                            className="h-16 rounded-2xl bg-muted/30 border-transparent hover:bg-muted/50 focus-visible:bg-background focus-visible:border-primary/50 focus-visible:ring-2 focus-visible:ring-primary/20 transition-all text-lg shadow-inner px-6"
+                            placeholder="70"
+                          />
+                        </div>
+                      </div>
+                    </div>
+
+                    <div className="pt-6">
+                      <Button type="submit" disabled={loading} className="w-full h-16 rounded-2xl gap-3 font-mono text-xs uppercase tracking-widest font-bold shadow-[0_0_20px_rgba(var(--primary),0.2)] hover:shadow-[0_0_30px_rgba(var(--primary),0.4)] hover:-translate-y-0.5 transition-all group relative overflow-hidden">
+                        {loading ? (
+                          <><Loader2 className="w-5 h-5 animate-spin mr-2" /> Synchronizing...</>
+                        ) : (
+                          <>
+                            <div className="absolute inset-0 bg-white/20 w-full h-full -translate-x-full group-hover:animate-[shimmer_1.5s_infinite]" />
+                            Synchronize Data
+                          </>
+                        )}
+                      </Button>
+                    </div>
+                  </form>
+                </CardContent>
+              </Card>
+            </div>
+
+          </div>
+        </div>
+      )}
+    </UnifiedLayout>
   );
 }
